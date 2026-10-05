@@ -1,4 +1,4 @@
-const CACHE="student-planner-v2-pwa-4";
+const CACHE="student-planner-v2-pwa-5";
 const ASSETS=["/","/index.html","/style.css","/script.js","/supabase-config.js","/matakuliah.html","/matakuliah.css","/matakuliah.js","/profil.html","/profil.css","/profil.js","/manifest.webmanifest","/app-icon.svg","/pwa.js"];
 
 self.addEventListener("install",event=>{
