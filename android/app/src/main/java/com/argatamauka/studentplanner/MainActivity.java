@@ -66,7 +66,7 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.2.4");
+        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.2.5");
 
         webView.addJavascriptInterface(new NotificationBridge(), "AndroidNotifications");
 
