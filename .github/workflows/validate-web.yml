@@ -1,0 +1,38 @@
+name: Validate Web App
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "*.js"
+      - "*.html"
+      - "*.css"
+      - "manifest.webmanifest"
+      - ".github/workflows/validate-web.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check script.js
+          node --check matakuliah.js
+          node --check profil.js
+          node --check pwa.js
+          node --check sw.js
+
+      - name: Check required PWA files
+        run: |
+          test -f index.html
+          test -f manifest.webmanifest
+          test -f sw.js
+          test -f app-icon.svg
