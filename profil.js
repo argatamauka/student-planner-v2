@@ -1,5 +1,6 @@
 const $=id=>document.getElementById(id);
 let user=null,profil=null,snapshot={},rt=null,photoUrl=null;
+let aboutUpdateInfo=null;
 const fields=[...document.querySelectorAll(".profile-input")],oldKeys=["nim","name","program","ijazah_name","financial_number","gender","birth_place_date","academic_status","religion","residence","marital_status","faculty","study_program","curriculum_name","academic_probation","race","address","mother_name","mother_phone","mother_address","father_name","father_phone","father_address","guardian_name","guardian_phone","guardian_address"];
 async function q(p){let{data,error}=await p;if(error)throw error;return data}
 function formData(){let d={};fields.forEach(x=>d[x.dataset.field]=x.value.trim());return d}
@@ -119,6 +120,69 @@ tampilModal("Pengaturan tersimpan. Pengingat otomatis akan aktif saat kamu mengg
 isiNotifPrefs();
 }catch(e){tampilModal("Gagal menyimpan pengingat: "+e.message)}
 }
+
+function compareAppVersions(a,b){
+let aa=String(a||"0").split(".").map(n=>Number(n)||0),bb=String(b||"0").split(".").map(n=>Number(n)||0),len=Math.max(aa.length,bb.length);
+for(let i=0;i<len;i++){let x=aa[i]||0,y=bb[i]||0;if(x>y)return 1;if(x<y)return -1}
+return 0;
+}
+function installedAppVersion(){
+try{
+if(window.AndroidNotifications&&typeof window.AndroidNotifications.getVersionName==="function"){
+let v=String(window.AndroidNotifications.getVersionName()||"").trim();
+if(v)return v;
+}
+}catch{}
+let m=navigator.userAgent.match(/StudentPlannerAndroid\/([0-9.]+)/i);
+return m?m[1]:"WEB";
+}
+function loadAboutApp(){
+let current=installedAppVersion();
+if($("about-current-version"))$("about-current-version").innerText=current;
+}
+async function cekUpdateProfil(){
+let btn=$("about-check-update-btn"),status=$("about-update-status"),download=$("about-download-update-btn");
+btn.disabled=true;btn.innerText="MEMERIKSA...";
+download.classList.add("hidden");
+aboutUpdateInfo=null;
+try{
+let res=await fetch("https://api.github.com/repos/argatamauka/student-planner-v2/releases/latest",{headers:{"Accept":"application/vnd.github+json"},cache:"no-store"});
+if(!res.ok)throw new Error("Gagal memeriksa update.");
+let release=await res.json(),latest=String(release?.tag_name||"").replace(/^v/i,""),current=installedAppVersion();
+let apk=(release?.assets||[]).find(x=>x.name==="Student-Planner-v2.apk");
+if(!latest||!apk?.browser_download_url)throw new Error("APK release terbaru belum tersedia.");
+$("about-latest-version").innerText=latest;
+if(current==="WEB"){
+status.innerText="Versi APK hanya dapat diperiksa dari aplikasi Android Student Planner.";
+return;
+}
+if(compareAppVersions(current,latest)>=0){
+status.innerText="Student Planner sudah menggunakan versi terbaru ✅";
+return;
+}
+aboutUpdateInfo={version:latest,url:apk.browser_download_url};
+status.innerText="Update v"+latest+" tersedia. Tekan UNDUH UPDATE untuk memulai.";
+download.innerText="UNDUH v"+latest;
+download.classList.remove("hidden");
+}catch(e){
+status.innerText="Gagal memeriksa update. Pastikan internet aktif lalu coba lagi.";
+}finally{
+btn.disabled=false;btn.innerText="CEK UPDATE";
+}
+}
+function updateDariProfil(){
+if(!aboutUpdateInfo)return;
+try{
+if(window.AndroidNotifications?.supportsInAppUpdate?.()&&typeof window.AndroidNotifications.downloadAndInstallUpdate==="function"){
+window.AndroidNotifications.downloadAndInstallUpdate(aboutUpdateInfo.url,aboutUpdateInfo.version);
+$("about-update-status").innerText="Download update dimulai. Ikuti progress yang muncul di aplikasi.";
+$("about-download-update-btn").classList.add("hidden");
+return;
+}
+}catch{}
+tampilModal("Update langsung hanya tersedia di aplikasi Android Student Planner.");
+}
+
 function bukaHapusAkun(){
 $("delete-password").value="";
 $("delete-confirm-text").value="";
@@ -167,5 +231,5 @@ let r=new FileReader();r.onload=()=>{let im=new Image();im.onload=()=>{let max=7
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){$("saved-modal").classList.add("hidden");tutupHapusAkun()}});
 (async()=>{
 let{data:{session}}=await sb.auth.getSession();if(!session)return location.href="index.html";
-user=session.user;try{profil=await migrasiProfil();await migrasiFoto();await load();isiNotifPrefs();rt=sb.channel("profile-"+user.id).on("postgres_changes",{event:"*",schema:"public",table:"profiles",filter:`user_id=eq.${user.id}`},()=>load()).subscribe()}catch(e){tampilModal("Gagal memuat profil: "+e.message)}
+user=session.user;try{loadAboutApp();profil=await migrasiProfil();await migrasiFoto();await load();isiNotifPrefs();rt=sb.channel("profile-"+user.id).on("postgres_changes",{event:"*",schema:"public",table:"profiles",filter:`user_id=eq.${user.id}`},()=>load()).subscribe()}catch(e){tampilModal("Gagal memuat profil: "+e.message)}
 })();
