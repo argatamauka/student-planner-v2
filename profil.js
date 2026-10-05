@@ -44,6 +44,72 @@ try{await q(sb.from("profiles").update({...d,updated_at:new Date().toISOString()
 }
 function tampilModal(t){$("modal-message").innerText=t;$("saved-modal").classList.remove("hidden")}
 function tutupModal(){$("saved-modal").classList.add("hidden")}
+function notifKey(){return "studentPlannerNotificationPrefs:"+(user?.id||"guest")}
+function defaultNotifPrefs(){return{enabled:false,schedule:true,scheduleMinutes:30,tasks:true,taskDays:1,taskHour:19}}
+function getNotifPrefs(){
+try{return{...defaultNotifPrefs(),...JSON.parse(localStorage.getItem(notifKey())||"{}")}}catch{return defaultNotifPrefs()}
+}
+function isiNotifPrefs(){
+let p=getNotifPrefs();
+$("notif-schedule").checked=!!p.schedule;
+$("notif-schedule-minutes").value=String(p.scheduleMinutes||30);
+$("notif-tasks").checked=!!p.tasks;
+$("notif-task-days").value=String(p.taskDays||1);
+$("notif-task-hour").value=String(p.taskHour??19);
+let native=!!window.AndroidNotifications;
+$("notification-status").innerText=p.enabled&&native?"AKTIF":"BELUM AKTIF";
+$("notification-status").classList.toggle("active",p.enabled&&native);
+$("save-notification-btn").innerText=p.enabled?"SIMPAN PENGATURAN":"AKTIFKAN & SIMPAN";
+$("notification-help").innerText=native
+?"Notifikasi dijadwalkan langsung oleh aplikasi Android di HP ini."
+:"Pengaturan tersimpan, tetapi pengingat otomatis tersedia saat Student Planner dibuka melalui aplikasi Android.";
+}
+function buatPayloadNotifikasi(schedules,tasks,p){
+let parsedSchedules=schedules.map(x=>{
+let m=String(x.time_range||"").match(/(\d{1,2}):(\d{2})/);
+if(!m)return null;
+return{id:x.id,day:x.day,course:x.course_name,room:x.room||"",time:x.time_range,hour:Number(m[1]),minute:Number(m[2])};
+}).filter(Boolean);
+return{
+userId:user.id,
+scheduleEnabled:!!p.schedule,
+scheduleMinutes:Number(p.scheduleMinutes||30),
+taskEnabled:!!p.tasks,
+taskDays:Number(p.taskDays||1),
+taskHour:Number(p.taskHour??19),
+schedules:parsedSchedules,
+tasks:tasks.filter(x=>!x.completed).map(x=>({id:x.id,name:x.name,course:x.course_name,deadline:x.deadline}))
+};
+}
+async function syncNotifDariCloud(p){
+if(!window.AndroidNotifications||!p.enabled)return;
+let[schedules,tasks]=await Promise.all([
+q(sb.from("schedules").select("id,day,course_name,time_range,room")),
+q(sb.from("tasks").select("id,name,course_name,deadline,completed"))
+]);
+window.AndroidNotifications.syncReminders(JSON.stringify(buatPayloadNotifikasi(schedules,tasks,p)));
+}
+async function simpanNotifikasi(){
+let p={
+enabled:true,
+schedule:$("notif-schedule").checked,
+scheduleMinutes:Number($("notif-schedule-minutes").value),
+tasks:$("notif-tasks").checked,
+taskDays:Number($("notif-task-days").value),
+taskHour:Number($("notif-task-hour").value)
+};
+localStorage.setItem(notifKey(),JSON.stringify(p));
+try{
+if(window.AndroidNotifications){
+window.AndroidNotifications.requestPermission();
+await syncNotifDariCloud(p);
+tampilModal("Pengingat berhasil diaktifkan. Android mungkin meminta izin notifikasi.");
+}else{
+tampilModal("Pengaturan tersimpan. Pengingat otomatis akan aktif saat kamu menggunakan aplikasi Android Student Planner.");
+}
+isiNotifPrefs();
+}catch(e){tampilModal("Gagal menyimpan pengingat: "+e.message)}
+}
 function bukaHapusAkun(){
 $("delete-password").value="";
 $("delete-confirm-text").value="";
@@ -92,5 +158,5 @@ let r=new FileReader();r.onload=()=>{let im=new Image();im.onload=()=>{let max=7
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){$("saved-modal").classList.add("hidden");tutupHapusAkun()}});
 (async()=>{
 let{data:{session}}=await sb.auth.getSession();if(!session)return location.href="index.html";
-user=session.user;try{profil=await migrasiProfil();await migrasiFoto();await load();rt=sb.channel("profile-"+user.id).on("postgres_changes",{event:"*",schema:"public",table:"profiles",filter:`user_id=eq.${user.id}`},()=>load()).subscribe()}catch(e){tampilModal("Gagal memuat profil: "+e.message)}
+user=session.user;try{profil=await migrasiProfil();await migrasiFoto();await load();isiNotifPrefs();rt=sb.channel("profile-"+user.id).on("postgres_changes",{event:"*",schema:"public",table:"profiles",filter:`user_id=eq.${user.id}`},()=>load()).subscribe()}catch(e){tampilModal("Gagal memuat profil: "+e.message)}
 })();
