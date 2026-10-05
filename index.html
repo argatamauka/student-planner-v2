@@ -203,11 +203,20 @@
 
 </div>
 <button class="install-app app-install-main hidden" onclick="installApp()">INSTALL APP</button>
-<div class="app-footer-tools">
-<p class="app-version">STUDENT PLANNER v2 • CLOUD SYNC</p>
-<button class="check-update-btn" onclick="manualCheckAppUpdate()">CEK UPDATE</button>
-<button class="check-update-btn feedback-btn" onclick="laporkanBug()">LAPORKAN BUG</button>
+<section class="app-tools-card">
+<div class="app-tools-head">
+<div>
+<small>APLIKASI</small>
+<strong>STUDENT PLANNER</strong>
+<span>v2 • CLOUD SYNC</span>
 </div>
+<span class="app-tools-badge">APP</span>
+</div>
+<div class="app-footer-tools">
+<button class="check-update-btn" onclick="manualCheckAppUpdate()">CEK UPDATE</button>
+<button id="native-about-app-btn" class="check-update-btn about-app-btn" onclick="bukaTentangApp()">TENTANG APP</button>
+</div>
+</section>
 <button class="logout" onclick="konfirmasiLogout()">LOGOUT</button>
 </main>
 </div>
