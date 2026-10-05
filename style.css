@@ -194,3 +194,10 @@ body:has(#login-screen:not(.hidden)){padding:12px}
 .update-version-row strong{display:block;margin-top:2px;font-size:13px}
 .update-help{margin:10px 0 0;font-size:9px;font-weight:700;line-height:1.45;opacity:.65}
 @media(max-width:380px){.update-version-row{grid-template-columns:1fr}}
+
+
+/* APP FOOTER TOOLS */
+.app-footer-tools{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:18px}
+.app-footer-tools .app-version{margin:0}
+.check-update-btn{width:auto;padding:6px 9px;border:2px solid #000;border-radius:7px;background:#fff;box-shadow:2px 2px 0 #000;font-size:9px;font-weight:700}
+.check-update-btn:active{transform:translate(2px,2px);box-shadow:none}
