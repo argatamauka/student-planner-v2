@@ -170,6 +170,12 @@ status.innerText="Gagal memeriksa update. Pastikan internet aktif lalu coba lagi
 btn.disabled=false;btn.innerText="CEK UPDATE";
 }
 }
+function laporkanBugProfil(){
+let version=installedAppVersion();
+let subject=encodeURIComponent("Bug Student Planner v"+version);
+let body=encodeURIComponent("Jelaskan masalah yang terjadi:\n\nLangkah sebelum masalah muncul:\n1. \n2. \n3. \n\nVersi aplikasi: "+version+"\nBrowser/Perangkat: "+navigator.userAgent);
+location.href="mailto:argatamauka@gmail.com?subject="+subject+"&body="+body;
+}
 function updateDariProfil(){
 if(!aboutUpdateInfo)return;
 try{
