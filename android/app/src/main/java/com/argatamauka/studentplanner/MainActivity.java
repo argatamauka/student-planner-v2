@@ -9,6 +9,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -89,27 +91,7 @@ public class MainActivity extends Activity {
         registerUpdateReceiver();
 
         webView = new WebView(this);
-
-        FrameLayout root = new FrameLayout(this);
-        root.addView(webView, new FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        ));
-
-        Button aboutButton = new Button(this);
-        aboutButton.setText("i");
-        aboutButton.setTextSize(16);
-        aboutButton.setTypeface(null, android.graphics.Typeface.BOLD);
-        aboutButton.setContentDescription("Tentang Student Planner");
-        aboutButton.setAllCaps(false);
-        aboutButton.setOnClickListener(v -> showNativeAboutDialog());
-
-        FrameLayout.LayoutParams aboutParams = new FrameLayout.LayoutParams(dp(46), dp(46));
-        aboutParams.gravity = Gravity.END | Gravity.BOTTOM;
-        aboutParams.setMargins(0, 0, dp(14), dp(14));
-        root.addView(aboutButton, aboutParams);
-
-        setContentView(root);
+        setContentView(webView);
 
         CookieManager cookies = CookieManager.getInstance();
         cookies.setAcceptCookie(true);
@@ -122,7 +104,7 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.2.10");
+        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.2.11");
 
         webView.addJavascriptInterface(new NotificationBridge(), "AndroidNotifications");
 
@@ -138,6 +120,12 @@ public class MainActivity extends Activity {
                     startActivity(intent);
                 } catch (Exception ignored) {}
                 return true;
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                injectNativeAboutButton();
             }
         });
 
@@ -204,6 +192,11 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void installDownloadedUpdate() {
             runOnUiThread(() -> installPendingUpdate());
+        }
+
+        @JavascriptInterface
+        public void openAboutApp() {
+            runOnUiThread(() -> showNativeAboutDialog());
         }
 
         @JavascriptInterface
@@ -558,6 +551,41 @@ public class MainActivity extends Activity {
     }
 
 
+    private void injectNativeAboutButton() {
+        if (webView == null) return;
+        String js = "(function(){"
+            + "if(document.getElementById('native-about-app-btn'))return;"
+            + "var host=document.querySelector('.app-footer-tools');"
+            + "if(!host)return;"
+            + "var b=document.createElement('button');"
+            + "b.id='native-about-app-btn';"
+            + "b.className='check-update-btn';"
+            + "b.textContent='TENTANG APP';"
+            + "b.setAttribute('aria-label','Tentang Student Planner');"
+            + "b.onclick=function(){try{AndroidNotifications.openAboutApp();}catch(e){}};"
+            + "host.appendChild(b);"
+            + "})();";
+        webView.post(() -> webView.evaluateJavascript(js, null));
+    }
+
+    private GradientDrawable neoBox(String fill, int strokeDp, int radiusDp) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(Color.parseColor(fill));
+        drawable.setStroke(dp(strokeDp), Color.BLACK);
+        drawable.setCornerRadius(dp(radiusDp));
+        return drawable;
+    }
+
+    private void styleNeoButton(Button button, String background, String textColor) {
+        button.setBackground(neoBox(background, 3, 7));
+        button.setTextColor(Color.parseColor(textColor));
+        button.setTextSize(11);
+        button.setTypeface(null, android.graphics.Typeface.BOLD);
+        button.setAllCaps(false);
+        button.setPadding(dp(12), dp(10), dp(12), dp(10));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) button.setElevation(dp(4));
+    }
+
     private String currentVersionName() {
         try {
             return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
@@ -572,73 +600,136 @@ public class MainActivity extends Activity {
         aboutDialog = new Dialog(this);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(20), dp(20), dp(20), dp(20));
+        root.setPadding(dp(18), dp(18), dp(18), dp(18));
+        root.setBackground(neoBox("#FFFFFF", 4, 12));
 
         TextView badge = new TextView(this);
-        badge.setText("TENTANG APLIKASI");
-        badge.setTextSize(12);
+        badge.setText(" TENTANG APLIKASI ");
+        badge.setTextSize(10);
+        badge.setTextColor(Color.BLACK);
         badge.setTypeface(null, android.graphics.Typeface.BOLD);
-        root.addView(badge);
+        badge.setGravity(Gravity.CENTER);
+        badge.setPadding(dp(8), dp(5), dp(8), dp(5));
+        badge.setBackground(neoBox("#FDE047", 2, 999));
+        LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        root.addView(badge, badgeParams);
 
         TextView title = new TextView(this);
         title.setText("STUDENT PLANNER");
-        title.setTextSize(21);
+        title.setTextSize(24);
+        title.setTextColor(Color.BLACK);
         title.setTypeface(null, android.graphics.Typeface.BOLD);
         LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        titleParams.topMargin = dp(4);
+        titleParams.topMargin = dp(10);
         root.addView(title, titleParams);
 
-        TextView developer = new TextView(this);
-        developer.setText("Developer: Arga Setia Tamauka\nInformatics Student & Web Developer");
-        developer.setTextSize(13);
+        TextView subtitle = new TextView(this);
+        subtitle.setText("Kuliah, tugas, uang, dan tabungan dalam satu tempat.");
+        subtitle.setTextSize(12);
+        subtitle.setTextColor(Color.DKGRAY);
+        root.addView(subtitle);
+
+        LinearLayout versionRow = new LinearLayout(this);
+        versionRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams versionRowParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        versionRowParams.topMargin = dp(14);
+        root.addView(versionRow, versionRowParams);
+
+        TextView current = new TextView(this);
+        current.setText("VERSI KAMU\n" + currentVersionName());
+        current.setTextSize(11);
+        current.setTextColor(Color.BLACK);
+        current.setTypeface(null, android.graphics.Typeface.BOLD);
+        current.setPadding(dp(10), dp(9), dp(10), dp(9));
+        current.setBackground(neoBox("#FDE047", 3, 8));
+        LinearLayout.LayoutParams currentParams = new LinearLayout.LayoutParams(
+            0,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            1f
+        );
+        currentParams.rightMargin = dp(5);
+        versionRow.addView(current, currentParams);
+
+        aboutLatestVersion = new TextView(this);
+        aboutLatestVersion.setText("TERBARU\n-");
+        aboutLatestVersion.setTextSize(11);
+        aboutLatestVersion.setTextColor(Color.BLACK);
+        aboutLatestVersion.setTypeface(null, android.graphics.Typeface.BOLD);
+        aboutLatestVersion.setPadding(dp(10), dp(9), dp(10), dp(9));
+        aboutLatestVersion.setBackground(neoBox("#4ADE80", 3, 8));
+        LinearLayout.LayoutParams latestParams = new LinearLayout.LayoutParams(
+            0,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            1f
+        );
+        latestParams.leftMargin = dp(5);
+        versionRow.addView(aboutLatestVersion, latestParams);
+
+        LinearLayout developerCard = new LinearLayout(this);
+        developerCard.setOrientation(LinearLayout.VERTICAL);
+        developerCard.setPadding(dp(11), dp(10), dp(11), dp(10));
+        developerCard.setBackground(neoBox("#60A5FA", 3, 8));
         LinearLayout.LayoutParams developerParams = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        developerParams.topMargin = dp(12);
-        root.addView(developer, developerParams);
+        developerParams.topMargin = dp(10);
+        root.addView(developerCard, developerParams);
 
-        TextView current = new TextView(this);
-        current.setText("Versi terpasang: " + currentVersionName());
-        current.setTextSize(14);
-        current.setTypeface(null, android.graphics.Typeface.BOLD);
-        LinearLayout.LayoutParams currentParams = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        );
-        currentParams.topMargin = dp(16);
-        root.addView(current, currentParams);
+        TextView developerLabel = new TextView(this);
+        developerLabel.setText("DEVELOPER");
+        developerLabel.setTextSize(9);
+        developerLabel.setTextColor(Color.BLACK);
+        developerLabel.setTypeface(null, android.graphics.Typeface.BOLD);
+        developerCard.addView(developerLabel);
 
-        aboutLatestVersion = new TextView(this);
-        aboutLatestVersion.setText("Versi terbaru: -");
-        aboutLatestVersion.setTextSize(14);
-        root.addView(aboutLatestVersion);
+        TextView developer = new TextView(this);
+        developer.setText("Arga Setia Tamauka");
+        developer.setTextSize(14);
+        developer.setTextColor(Color.BLACK);
+        developer.setTypeface(null, android.graphics.Typeface.BOLD);
+        developerCard.addView(developer);
+
+        TextView role = new TextView(this);
+        role.setText("Informatics Student & Web Developer");
+        role.setTextSize(10);
+        role.setTextColor(Color.DKGRAY);
+        developerCard.addView(role);
 
         aboutStatus = new TextView(this);
         aboutStatus.setText("Tekan CEK UPDATE untuk memeriksa versi terbaru.");
-        aboutStatus.setTextSize(12);
+        aboutStatus.setTextSize(11);
+        aboutStatus.setTextColor(Color.DKGRAY);
         LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        statusParams.topMargin = dp(12);
+        statusParams.topMargin = dp(11);
         root.addView(aboutStatus, statusParams);
 
         aboutCheckButton = new Button(this);
         aboutCheckButton.setText("CEK UPDATE");
+        styleNeoButton(aboutCheckButton, "#FDE047", "#000000");
         aboutCheckButton.setOnClickListener(v -> checkNativeUpdate());
         LinearLayout.LayoutParams checkParams = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        checkParams.topMargin = dp(14);
+        checkParams.topMargin = dp(10);
         root.addView(aboutCheckButton, checkParams);
 
         aboutUpdateButton = new Button(this);
         aboutUpdateButton.setText("UNDUH UPDATE");
+        styleNeoButton(aboutUpdateButton, "#000000", "#FFFFFF");
         aboutUpdateButton.setVisibility(View.GONE);
         aboutUpdateButton.setOnClickListener(v -> {
             if (aboutUpdateUrl == null || aboutUpdateVersion == null) return;
@@ -652,36 +743,61 @@ public class MainActivity extends Activity {
         updateParams.topMargin = dp(8);
         root.addView(aboutUpdateButton, updateParams);
 
+        LinearLayout changeCard = new LinearLayout(this);
+        changeCard.setOrientation(LinearLayout.VERTICAL);
+        changeCard.setPadding(dp(11), dp(10), dp(11), dp(10));
+        changeCard.setBackground(neoBox("#F4F0E6", 3, 8));
+        LinearLayout.LayoutParams changeParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        changeParams.topMargin = dp(12);
+        root.addView(changeCard, changeParams);
+
+        TextView changeTitle = new TextView(this);
+        changeTitle.setText("YANG BARU");
+        changeTitle.setTextSize(9);
+        changeTitle.setTextColor(Color.BLACK);
+        changeTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+        changeCard.addView(changeTitle);
+
         TextView changelog = new TextView(this);
-        changelog.setText("Yang baru:\n• Update APK langsung di aplikasi\n• Progress download 0–100%\n• Tombol INSTAL UPDATE setelah download selesai");
-        changelog.setTextSize(12);
+        changelog.setText("• Update langsung di aplikasi\n• Progress download 0–100%\n• Instal hanya setelah download selesai");
+        changelog.setTextSize(11);
+        changelog.setTextColor(Color.BLACK);
         LinearLayout.LayoutParams changelogParams = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        changelogParams.topMargin = dp(16);
-        root.addView(changelog, changelogParams);
+        changelogParams.topMargin = dp(5);
+        changeCard.addView(changelog, changelogParams);
 
         Button close = new Button(this);
         close.setText("TUTUP");
+        styleNeoButton(close, "#FFFFFF", "#000000");
         close.setOnClickListener(v -> aboutDialog.dismiss());
         LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        closeParams.topMargin = dp(12);
+        closeParams.topMargin = dp(10);
         root.addView(close, closeParams);
 
         aboutDialog.setContentView(root);
         aboutDialog.setCancelable(true);
-        aboutDialog.show();
-
         Window window = aboutDialog.getWindow();
         if (window != null) {
-            window.setLayout(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
+            window.setBackgroundDrawableResource(android.R.color.transparent);
+        }
+        aboutDialog.show();
+
+        window = aboutDialog.getWindow();
+        if (window != null) {
+            int width = Math.min(
+                getResources().getDisplayMetrics().widthPixels - dp(28),
+                dp(390)
             );
+            window.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
     }
 
@@ -738,7 +854,7 @@ public class MainActivity extends Activity {
                 final String latestFinal = latest;
                 final String apkUrlFinal = apkUrl;
                 runOnUiThread(() -> {
-                    if (aboutLatestVersion != null) aboutLatestVersion.setText("Versi terbaru: " + latestFinal);
+                    if (aboutLatestVersion != null) aboutLatestVersion.setText("TERBARU\n" + latestFinal);
                     if (compareVersionNames(currentVersionName(), latestFinal) >= 0) {
                         aboutStatus.setText("Student Planner sudah menggunakan versi terbaru ✅");
                         aboutUpdateButton.setVisibility(View.GONE);
