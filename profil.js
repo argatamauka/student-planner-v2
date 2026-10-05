@@ -44,6 +44,14 @@ try{await q(sb.from("profiles").update({...d,updated_at:new Date().toISOString()
 }
 function tampilModal(t){$("modal-message").innerText=t;$("saved-modal").classList.remove("hidden")}
 function tutupModal(){$("saved-modal").classList.add("hidden")}
+function toggleNotificationSettings(force){
+let panel=$("notification-settings"),btn=$("notification-settings-toggle");
+if(!panel||!btn)return;
+let open=typeof force==="boolean"?force:panel.classList.contains("hidden");
+panel.classList.toggle("hidden",!open);
+btn.setAttribute("aria-expanded",String(open));
+btn.querySelector("span:first-child").innerText=open?"TUTUP PENGATURAN":"ATUR NOTIFIKASI";
+}
 function notifKey(){return "studentPlannerNotificationPrefs:"+(user?.id||"guest")}
 function defaultNotifPrefs(){return{enabled:false,schedule:true,scheduleMinutes:30,tasks:true,taskDays:1,taskHour:19}}
 function getNotifPrefs(){
@@ -99,6 +107,7 @@ taskDays:Number($("notif-task-days").value),
 taskHour:Number($("notif-task-hour").value)
 };
 localStorage.setItem(notifKey(),JSON.stringify(p));
+toggleNotificationSettings(true);
 try{
 if(window.AndroidNotifications){
 window.AndroidNotifications.requestPermission();
