@@ -89,6 +89,56 @@
 </div>
 </section>
 
+<section class="notification-card">
+<div class="notification-head">
+<div><small>PENGINGAT</small><h2>NOTIFIKASI</h2></div>
+<span id="notification-status" class="notification-status">BELUM AKTIF</span>
+</div>
+<p class="notification-copy">Dapatkan pengingat jadwal kuliah dan deadline tugas langsung di HP.</p>
+
+<label class="notification-toggle">
+<input id="notif-schedule" type="checkbox" checked>
+<span><strong>Jadwal kuliah</strong><small>Ingatkan sebelum kelas dimulai.</small></span>
+</label>
+<label class="notification-field">
+<span>INGATKAN SEBELUM KULIAH</span>
+<select id="notif-schedule-minutes">
+<option value="15">15 menit sebelumnya</option>
+<option value="30" selected>30 menit sebelumnya</option>
+<option value="60">1 jam sebelumnya</option>
+</select>
+</label>
+
+<label class="notification-toggle">
+<input id="notif-tasks" type="checkbox" checked>
+<span><strong>Deadline tugas</strong><small>Ingatkan sebelum dan pada hari deadline.</small></span>
+</label>
+<div class="notification-grid">
+<label class="notification-field">
+<span>PENGINGAT AWAL</span>
+<select id="notif-task-days">
+<option value="1" selected>1 hari sebelumnya</option>
+<option value="2">2 hari sebelumnya</option>
+<option value="3">3 hari sebelumnya</option>
+</select>
+</label>
+<label class="notification-field">
+<span>JAM PENGINGAT</span>
+<select id="notif-task-hour">
+<option value="7">07:00</option>
+<option value="8">08:00</option>
+<option value="12">12:00</option>
+<option value="18">18:00</option>
+<option value="19" selected>19:00</option>
+<option value="20">20:00</option>
+</select>
+</label>
+</div>
+
+<button id="save-notification-btn" class="notification-save" onclick="simpanNotifikasi()">AKTIFKAN & SIMPAN</button>
+<p id="notification-help" class="notification-help"></p>
+</section>
+
 <section class="danger-card">
 <div>
 <small>AKUN</small>
