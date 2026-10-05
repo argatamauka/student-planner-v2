@@ -10,6 +10,7 @@ import android.content.Context;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.content.res.ColorStateList;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
@@ -104,7 +105,7 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.2.11");
+        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.2.12");
 
         webView.addJavascriptInterface(new NotificationBridge(), "AndroidNotifications");
 
@@ -360,27 +361,47 @@ public class MainActivity extends Activity {
 
         if (updateDialog == null) {
             updateDialog = new Dialog(this);
+
             LinearLayout root = new LinearLayout(this);
             root.setOrientation(LinearLayout.VERTICAL);
-            root.setPadding(dp(20), dp(20), dp(20), dp(20));
+            root.setPadding(dp(18), dp(18), dp(18), dp(18));
+            root.setBackground(neoBox("#FFFFFF", 4, 12));
 
-            TextView title = new TextView(this);
-            title.setText("UPDATE STUDENT PLANNER");
-            title.setTextSize(18);
-            title.setTypeface(null, android.graphics.Typeface.BOLD);
-            root.addView(title, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
+            TextView badge = new TextView(this);
+            badge.setText(" UPDATE APLIKASI ");
+            badge.setTextSize(10);
+            badge.setTextColor(Color.BLACK);
+            badge.setTypeface(null, android.graphics.Typeface.BOLD);
+            badge.setGravity(Gravity.CENTER);
+            badge.setPadding(dp(8), dp(5), dp(8), dp(5));
+            badge.setBackground(neoBox("#FDE047", 2, 999));
+            root.addView(badge, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             ));
 
+            TextView title = new TextView(this);
+            title.setText("STUDENT PLANNER");
+            title.setTextSize(22);
+            title.setTextColor(Color.BLACK);
+            title.setTypeface(null, android.graphics.Typeface.BOLD);
+            LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+            titleParams.topMargin = dp(10);
+            root.addView(title, titleParams);
+
             updateProgressText = new TextView(this);
             updateProgressText.setText("Menyiapkan download...");
-            updateProgressText.setTextSize(14);
+            updateProgressText.setTextSize(12);
+            updateProgressText.setTextColor(Color.DKGRAY);
+            updateProgressText.setTypeface(null, android.graphics.Typeface.BOLD);
             LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             );
-            textParams.topMargin = dp(14);
+            textParams.topMargin = dp(12);
             root.addView(updateProgressText, textParams);
 
             updateProgressBar = new ProgressBar(
@@ -390,37 +411,44 @@ public class MainActivity extends Activity {
             );
             updateProgressBar.setMax(100);
             updateProgressBar.setProgress(0);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                updateProgressBar.setProgressTintList(ColorStateList.valueOf(Color.BLACK));
+                updateProgressBar.setProgressBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#F4F0E6")));
+            }
             LinearLayout.LayoutParams progressParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                dp(18)
+                dp(20)
             );
-            progressParams.topMargin = dp(12);
+            progressParams.topMargin = dp(10);
             root.addView(updateProgressBar, progressParams);
 
             updateInstallButton = new Button(this);
             updateInstallButton.setText("INSTAL UPDATE");
+            styleNeoButton(updateInstallButton, "#000000", "#FFFFFF");
             updateInstallButton.setVisibility(View.GONE);
             updateInstallButton.setOnClickListener(v -> installPendingUpdate());
             LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             );
-            buttonParams.topMargin = dp(16);
+            buttonParams.topMargin = dp(14);
             root.addView(updateInstallButton, buttonParams);
 
             updateDialog.setContentView(root);
             updateDialog.setCancelable(false);
+            Window window = updateDialog.getWindow();
+            if (window != null) window.setBackgroundDrawableResource(android.R.color.transparent);
         }
 
-        if (!updateDialog.isShowing()) {
-            updateDialog.show();
-            Window window = updateDialog.getWindow();
-            if (window != null) {
-                window.setLayout(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                );
-            }
+        if (!updateDialog.isShowing()) updateDialog.show();
+
+        Window window = updateDialog.getWindow();
+        if (window != null) {
+            int width = Math.min(
+                getResources().getDisplayMetrics().widthPixels - dp(28),
+                dp(390)
+            );
+            window.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
         }
 
         if (updateProgressText != null) {
@@ -772,6 +800,17 @@ public class MainActivity extends Activity {
         changelogParams.topMargin = dp(5);
         changeCard.addView(changelog, changelogParams);
 
+        Button reportBug = new Button(this);
+        reportBug.setText("LAPORKAN BUG");
+        styleNeoButton(reportBug, "#F472B6", "#000000");
+        reportBug.setOnClickListener(v -> reportBug());
+        LinearLayout.LayoutParams reportParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        reportParams.topMargin = dp(10);
+        root.addView(reportBug, reportParams);
+
         Button close = new Button(this);
         close.setText("TUTUP");
         styleNeoButton(close, "#FFFFFF", "#000000");
@@ -798,6 +837,27 @@ public class MainActivity extends Activity {
                 dp(390)
             );
             window.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+    }
+
+    private void reportBug() {
+        String body = "Jelaskan masalah yang terjadi:\n\n"
+            + "Langkah sebelum masalah muncul:\n1. \n2. \n3. \n\n"
+            + "Versi aplikasi: " + currentVersionName() + "\n"
+            + "Android: " + Build.VERSION.RELEASE + "\n"
+            + "Perangkat: " + Build.MANUFACTURER + " " + Build.MODEL + "\n";
+
+        Uri mail = Uri.parse("mailto:argatamauka@gmail.com")
+            .buildUpon()
+            .appendQueryParameter("subject", "Bug Student Planner v" + currentVersionName())
+            .appendQueryParameter("body", body)
+            .build();
+
+        Intent intent = new Intent(Intent.ACTION_SENDTO, mail);
+        try {
+            startActivity(intent);
+        } catch (Exception e) {
+            Toast.makeText(this, "Aplikasi email tidak ditemukan.", Toast.LENGTH_LONG).show();
         }
     }
 
