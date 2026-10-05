@@ -27,9 +27,10 @@
 <label>PASSWORD</label>
 <input id="password" type="password" placeholder="********">
 <div class="actions">
-<button class="dark" onclick="login()">MASUK</button>
-<button class="white" onclick="daftar()">DAFTAR</button>
+<button id="login-btn" class="dark" onclick="login()">MASUK</button>
+<button id="register-btn" class="white" onclick="daftar()">DAFTAR</button>
 </div>
+<button class="text-action" onclick="kirimResetPassword()">LUPA PASSWORD?</button>
 <button class="install-app hidden" onclick="installApp()">INSTALL APP</button>
 </section>
 
@@ -202,8 +203,41 @@
 
 </div>
 <button class="install-app app-install-main hidden" onclick="installApp()">INSTALL APP</button>
+<p class="app-version">STUDENT PLANNER v2 • CLOUD SYNC</p>
 <button class="logout" onclick="konfirmasiLogout()">LOGOUT</button>
 </main>
+</div>
+
+<div id="onboarding-modal" class="modal hidden">
+<div class="card modal-card onboarding-card">
+<span class="badge">SELAMAT DATANG 👋</span>
+<h2>KENALAN DULU</h2>
+<p class="muted">Isi nama supaya Student Planner terasa seperti milikmu sendiri.</p>
+<label>NAMA LENGKAP</label>
+<input id="onboarding-name" autocomplete="name" placeholder="Nama lengkap">
+<label>NIM <span class="optional-text">(OPSIONAL)</span></label>
+<input id="onboarding-nim" inputmode="numeric" placeholder="NIM">
+<button class="dark" onclick="simpanOnboarding()">MULAI GUNAKAN PLANNER</button>
+</div>
+</div>
+
+<div id="password-recovery-modal" class="modal hidden">
+<div class="card modal-card recovery-card">
+<span class="badge">RESET PASSWORD</span>
+<h2>BUAT PASSWORD BARU</h2>
+<p class="muted">Gunakan minimal 6 karakter.</p>
+<input id="new-password" type="password" autocomplete="new-password" placeholder="Password baru">
+<input id="confirm-new-password" type="password" autocomplete="new-password" placeholder="Ulangi password baru">
+<button class="dark" onclick="simpanPasswordBaru()">SIMPAN PASSWORD</button>
+<button class="white recovery-cancel" onclick="batalRecovery()">BATAL</button>
+</div>
+</div>
+
+<div id="app-loading" class="loading-overlay hidden" aria-live="polite">
+<div class="loading-box">
+<div class="loading-dot"></div>
+<strong id="loading-text">MEMUAT...</strong>
+</div>
 </div>
 
 <div id="confirm-modal" class="modal hidden">
