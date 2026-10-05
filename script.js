@@ -117,11 +117,12 @@ try{
 if(window.AndroidNotifications?.supportsInAppUpdate?.()&&typeof window.AndroidNotifications.downloadAndInstallUpdate==="function"){
 window.AndroidNotifications.downloadAndInstallUpdate(appUpdateInfo.downloadUrl,appUpdateInfo.latestVersion);
 $("app-update-modal").classList.add("hidden");
-info("Update sedang diunduh di dalam aplikasi. Setelah selesai, Android akan meminta konfirmasi untuk memasangnya.");
+info("Update sedang diunduh langsung di aplikasi. Setelah selesai, Android akan meminta konfirmasi pemasangan.");
 return;
 }
 }catch{}
-location.href=appUpdateInfo.downloadUrl;
+$("app-update-modal").classList.add("hidden");
+info("Versi APK ini belum mendukung download update di dalam aplikasi. Install Student Planner v2.2.3 atau lebih baru satu kali, lalu update berikutnya akan berlangsung langsung dari aplikasi.");
 }
 
 /* AUTH */
