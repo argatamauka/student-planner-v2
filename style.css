@@ -201,3 +201,11 @@ body:has(#login-screen:not(.hidden)){padding:12px}
 .app-footer-tools .app-version{margin:0}
 .check-update-btn{width:auto;padding:6px 9px;border:2px solid #000;border-radius:7px;background:#fff;box-shadow:2px 2px 0 #000;font-size:9px;font-weight:700}
 .check-update-btn:active{transform:translate(2px,2px);box-shadow:none}
+
+
+/* STAGED APP UPDATE */
+.update-download-progress{margin:12px 0;padding:10px;border:3px solid #000;border-radius:8px;background:var(--yellow)}
+.update-progress-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px;font-size:10px}
+.update-progress-track{height:18px;overflow:hidden;border:3px solid #000;border-radius:999px;background:#fff}
+#update-progress-fill{width:0;height:100%;background:#000;transition:width .2s ease}
+#update-now-btn:disabled,#update-later-btn:disabled{cursor:not-allowed;opacity:.6;transform:none;box-shadow:3px 3px 0 #000}
