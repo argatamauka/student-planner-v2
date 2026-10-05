@@ -1,0 +1,6 @@
+# Android local/signing files
+*.jks
+*.keystore
+android/local.properties
+android/.gradle/
+android/app/build/
