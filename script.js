@@ -64,18 +64,27 @@ return m?m[1]:null;
 async function checkAppUpdate(){
 let current=installedAndroidVersion();if(!current)return;
 try{
-let res=await fetch("/version.json?ts="+Date.now(),{cache:"no-store"});
+let release=null,cacheKey="studentPlannerLatestReleaseCache",cached=null;
+try{cached=JSON.parse(localStorage.getItem(cacheKey)||"null")}catch{}
+if(cached?.checkedAt&&Date.now()-cached.checkedAt<6*60*60*1000&&cached.release){
+release=cached.release;
+}else{
+let res=await fetch("https://api.github.com/repos/argatamauka/student-planner-v2/releases/latest",{headers:{"Accept":"application/vnd.github+json"}});
 if(!res.ok)return;
-let latest=await res.json();
-if(!latest?.latestVersion||compareVersions(current,latest.latestVersion)>=0)return;
-let snoozeKey="studentPlannerUpdateSnooze:"+latest.latestVersion;
+release=await res.json();
+localStorage.setItem(cacheKey,JSON.stringify({checkedAt:Date.now(),release}));
+}
+let latestVersion=String(release?.tag_name||"").replace(/^v/i,"");
+let apk=(release?.assets||[]).find(x=>x.name==="Student-Planner-v2.apk");
+if(!latestVersion||!apk?.browser_download_url||compareVersions(current,latestVersion)>=0)return;
+let snoozeKey="studentPlannerUpdateSnooze:"+latestVersion;
 let snoozed=Number(localStorage.getItem(snoozeKey)||0);
 if(snoozed&&Date.now()-snoozed<12*60*60*1000)return;
-appUpdateInfo={...latest,currentVersion:current};
+appUpdateInfo={latestVersion,downloadUrl:apk.browser_download_url,currentVersion:current};
 $("update-current-version").innerText=current;
-$("update-latest-version").innerText=latest.latestVersion;
-$("update-title").innerText="VERSI "+latest.latestVersion+" TERSEDIA";
-$("update-message").innerText=latest.message||"Ada pembaruan Student Planner. Update untuk mendapatkan perbaikan dan fitur terbaru.";
+$("update-latest-version").innerText=latestVersion;
+$("update-title").innerText="VERSI "+latestVersion+" TERSEDIA";
+$("update-message").innerText="Ada pembaruan Student Planner. Update untuk mendapatkan perbaikan dan fitur terbaru.";
 $("app-update-modal").classList.remove("hidden");
 }catch{}
 }
