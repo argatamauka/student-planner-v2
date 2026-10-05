@@ -12,6 +12,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.widget.Toast;
 import android.webkit.CookieManager;
@@ -38,6 +40,8 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> fileCallback;
     private BroadcastReceiver updateDownloadReceiver;
     private boolean updateSettingsRequested = false;
+    private final Handler updateHandler = new Handler(Looper.getMainLooper());
+    private Runnable updateProgressRunnable;
 
     private final Set<String> appHosts = new HashSet<>(Arrays.asList(
         "studentplannerarga.vercel.app",
@@ -66,7 +70,7 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.2.5");
+        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.2.6");
 
         webView.addJavascriptInterface(new NotificationBridge(), "AndroidNotifications");
 
@@ -136,8 +140,18 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public boolean supportsStagedInAppUpdate() {
+            return true;
+        }
+
+        @JavascriptInterface
         public void downloadAndInstallUpdate(String url, String version) {
             runOnUiThread(() -> beginUpdateDownload(url, version));
+        }
+
+        @JavascriptInterface
+        public void installDownloadedUpdate() {
+            runOnUiThread(() -> installPendingUpdate());
         }
 
         @JavascriptInterface
@@ -195,6 +209,7 @@ public class MainActivity extends Activity {
         try {
             Uri uri = Uri.parse(url);
             if (!"https".equalsIgnoreCase(uri.getScheme()) || !"github.com".equalsIgnoreCase(uri.getHost())) {
+                notifyUpdateProgress("failed", 0);
                 Toast.makeText(this, "Link update tidak valid.", Toast.LENGTH_LONG).show();
                 return;
             }
@@ -202,6 +217,7 @@ public class MainActivity extends Activity {
             String safeVersion = String.valueOf(version).replaceAll("[^0-9A-Za-z._-]", "");
             File dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
             if (dir == null) {
+                notifyUpdateProgress("failed", 0);
                 Toast.makeText(this, "Penyimpanan tidak tersedia.", Toast.LENGTH_LONG).show();
                 return;
             }
@@ -227,53 +243,117 @@ public class MainActivity extends Activity {
                 .putLong(UPDATE_DOWNLOAD_ID, id)
                 .apply();
 
-            Toast.makeText(this, "Update sedang diunduh di dalam aplikasi.", Toast.LENGTH_LONG).show();
+            notifyUpdateProgress("downloading", 0);
+            startUpdateProgressPolling();
         } catch (Exception e) {
+            notifyUpdateProgress("failed", 0);
             Toast.makeText(this, "Gagal mengunduh update.", Toast.LENGTH_LONG).show();
         }
     }
 
-    private void checkPendingUpdateDownload() {
+    private void startUpdateProgressPolling() {
+        if (updateProgressRunnable != null) updateHandler.removeCallbacks(updateProgressRunnable);
+
+        updateProgressRunnable = new Runnable() {
+            @Override
+            public void run() {
+                boolean keepPolling = checkPendingUpdateDownload();
+                if (keepPolling) updateHandler.postDelayed(this, 500);
+            }
+        };
+        updateHandler.post(updateProgressRunnable);
+    }
+
+    private boolean checkPendingUpdateDownload() {
         long id = getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE).getLong(UPDATE_DOWNLOAD_ID, -1);
-        if (id == -1) return;
+        if (id == -1) return false;
+
+        DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        if (manager == null) return false;
+
+        DownloadManager.Query query = new DownloadManager.Query().setFilterById(id);
+        try (android.database.Cursor cursor = manager.query(query)) {
+            if (cursor == null || !cursor.moveToFirst()) return false;
+
+            int statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
+            int downloadedIndex = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR);
+            int totalIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES);
+            if (statusIndex < 0) return false;
+
+            int status = cursor.getInt(statusIndex);
+            long downloaded = downloadedIndex >= 0 ? cursor.getLong(downloadedIndex) : 0;
+            long total = totalIndex >= 0 ? cursor.getLong(totalIndex) : 0;
+            int progress = total > 0 ? (int) Math.min(100, (downloaded * 100L) / total) : 0;
+
+            if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                notifyUpdateProgress("ready", 100);
+                return false;
+            }
+
+            if (status == DownloadManager.STATUS_FAILED) {
+                getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE).edit().remove(UPDATE_DOWNLOAD_ID).apply();
+                notifyUpdateProgress("failed", progress);
+                return false;
+            }
+
+            notifyUpdateProgress("downloading", progress);
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private void notifyUpdateProgress(String state, int progress) {
+        if (webView == null) return;
+        int safeProgress = Math.max(0, Math.min(100, progress));
+        String js = "window.onNativeUpdateProgress&&window.onNativeUpdateProgress('" +
+            state + "'," + safeProgress + ");";
+        webView.post(() -> webView.evaluateJavascript(js, null));
+    }
+
+    private void installPendingUpdate() {
+        long id = getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE).getLong(UPDATE_DOWNLOAD_ID, -1);
+        if (id == -1) {
+            Toast.makeText(this, "File update belum siap.", Toast.LENGTH_LONG).show();
+            return;
+        }
 
         DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
         if (manager == null) return;
 
         DownloadManager.Query query = new DownloadManager.Query().setFilterById(id);
         try (android.database.Cursor cursor = manager.query(query)) {
-            if (cursor == null || !cursor.moveToFirst()) return;
+            if (cursor == null || !cursor.moveToFirst()) {
+                Toast.makeText(this, "File update tidak ditemukan.", Toast.LENGTH_LONG).show();
+                return;
+            }
 
             int statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
-            if (statusIndex < 0) return;
-            int status = cursor.getInt(statusIndex);
-
-            if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                Uri apkUri = manager.getUriForDownloadedFile(id);
-                if (apkUri != null) installDownloadedUpdate(id, apkUri);
-            } else if (status == DownloadManager.STATUS_FAILED) {
-                getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE).edit().remove(UPDATE_DOWNLOAD_ID).apply();
-                Toast.makeText(this, "Download update gagal. Coba lagi.", Toast.LENGTH_LONG).show();
+            if (statusIndex < 0 || cursor.getInt(statusIndex) != DownloadManager.STATUS_SUCCESSFUL) {
+                Toast.makeText(this, "Download update belum selesai.", Toast.LENGTH_LONG).show();
+                return;
             }
-        } catch (Exception ignored) {}
+
+            Uri apkUri = manager.getUriForDownloadedFile(id);
+            if (apkUri != null) installDownloadedUpdate(id, apkUri);
+        } catch (Exception e) {
+            Toast.makeText(this, "Tidak bisa membuka update.", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void installDownloadedUpdate(long id, Uri apkUri) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
             !getPackageManager().canRequestPackageInstalls()) {
-            if (!updateSettingsRequested) {
-                updateSettingsRequested = true;
-                Toast.makeText(this, "Izinkan Student Planner memasang update satu kali.", Toast.LENGTH_LONG).show();
-                Intent settingsIntent = new Intent(
-                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                    Uri.parse("package:" + getPackageName())
-                );
-                startActivity(settingsIntent);
-            }
+            updateSettingsRequested = true;
+            Toast.makeText(this, "Izinkan Student Planner memasang update satu kali.", Toast.LENGTH_LONG).show();
+            Intent settingsIntent = new Intent(
+                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                Uri.parse("package:" + getPackageName())
+            );
+            startActivity(settingsIntent);
             return;
         }
 
-        getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE).edit().remove(UPDATE_DOWNLOAD_ID).apply();
         updateSettingsRequested = false;
 
         Intent install = new Intent(Intent.ACTION_VIEW);
@@ -281,6 +361,7 @@ public class MainActivity extends Activity {
         install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
         try {
             startActivity(install);
+            getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE).edit().remove(UPDATE_DOWNLOAD_ID).apply();
         } catch (Exception e) {
             Toast.makeText(this, "Tidak bisa membuka pemasang update.", Toast.LENGTH_LONG).show();
         }
@@ -289,6 +370,11 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (updateSettingsRequested &&
+            (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || getPackageManager().canRequestPackageInstalls())) {
+            installPendingUpdate();
+            return;
+        }
         checkPendingUpdateDownload();
     }
 
@@ -325,6 +411,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (updateProgressRunnable != null) updateHandler.removeCallbacks(updateProgressRunnable);
         if (updateDownloadReceiver != null) {
             try { unregisterReceiver(updateDownloadReceiver); } catch (Exception ignored) {}
         }
