@@ -61,25 +61,33 @@ if(v)return v;
 let m=navigator.userAgent.match(/StudentPlannerAndroid\/([0-9.]+)/i);
 return m?m[1]:null;
 }
-async function checkAppUpdate(){
-let current=installedAndroidVersion();if(!current)return;
+async function checkAppUpdate(force=false){
+let current=installedAndroidVersion();
+if(!current){
+if(force)info("Pemeriksaan update APK hanya tersedia di aplikasi Android Student Planner.");
+return false;
+}
 try{
 let release=null,cacheKey="studentPlannerLatestReleaseCache",cached=null;
 try{cached=JSON.parse(localStorage.getItem(cacheKey)||"null")}catch{}
-if(cached?.checkedAt&&Date.now()-cached.checkedAt<6*60*60*1000&&cached.release){
+if(!force&&cached?.checkedAt&&Date.now()-cached.checkedAt<6*60*60*1000&&cached.release){
 release=cached.release;
 }else{
-let res=await fetch("https://api.github.com/repos/argatamauka/student-planner-v2/releases/latest",{headers:{"Accept":"application/vnd.github+json"}});
-if(!res.ok)return;
+let res=await fetch("https://api.github.com/repos/argatamauka/student-planner-v2/releases/latest",{headers:{"Accept":"application/vnd.github+json"},cache:"no-store"});
+if(!res.ok)throw new Error("Gagal memeriksa versi terbaru.");
 release=await res.json();
 localStorage.setItem(cacheKey,JSON.stringify({checkedAt:Date.now(),release}));
 }
 let latestVersion=String(release?.tag_name||"").replace(/^v/i,"");
 let apk=(release?.assets||[]).find(x=>x.name==="Student-Planner-v2.apk");
-if(!latestVersion||!apk?.browser_download_url||compareVersions(current,latestVersion)>=0)return;
+if(!latestVersion||!apk?.browser_download_url)throw new Error("Release terbaru belum menyediakan APK.");
+if(compareVersions(current,latestVersion)>=0){
+if(force)info("Student Planner sudah menggunakan versi terbaru ✅");
+return false;
+}
 let snoozeKey="studentPlannerUpdateSnooze:"+latestVersion;
 let snoozed=Number(localStorage.getItem(snoozeKey)||0);
-if(snoozed&&Date.now()-snoozed<12*60*60*1000)return;
+if(!force&&snoozed&&Date.now()-snoozed<12*60*60*1000)return false;
 appUpdateInfo={latestVersion,downloadUrl:apk.browser_download_url,currentVersion:current};
 $("update-current-version").innerText=current;
 $("update-latest-version").innerText=latestVersion;
@@ -89,7 +97,15 @@ let nativeUpdater=false;
 try{nativeUpdater=!!window.AndroidNotifications?.supportsInAppUpdate?.()}catch{}
 $("update-now-btn").innerText=nativeUpdater?"UPDATE DI APLIKASI":"DOWNLOAD UPDATE";
 $("app-update-modal").classList.remove("hidden");
-}catch{}
+return true;
+}catch(e){
+if(force)info("Gagal memeriksa update. Pastikan internet aktif lalu coba lagi.");
+return false;
+}
+}
+async function manualCheckAppUpdate(){
+setLoading(true,"MEMERIKSA UPDATE...");
+try{await checkAppUpdate(true)}finally{setLoading(false)}
 }
 function tundaUpdateApp(){
 if(appUpdateInfo)localStorage.setItem("studentPlannerUpdateSnooze:"+appUpdateInfo.latestVersion,String(Date.now()));
