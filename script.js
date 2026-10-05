@@ -7,6 +7,18 @@ function confirmBox(t,a,b="LANJUTKAN"){$("confirm-text").innerText=t;$("confirm-
 function tutupConfirm(){$("confirm-modal").classList.add("hidden");aksiConfirm=null}
 $("confirm-ok").onclick=()=>{let a=aksiConfirm;tutupConfirm();if(a)a()};
 async function q(p){let{data,error}=await p;if(error)throw error;return data}
+function namaPanggilan(nama){
+nama=String(nama||"").trim();if(!nama)return"";
+if(nama.includes(",")){let setelah=nama.split(",")[1]?.trim();if(setelah)return setelah.split(/\s+/)[0]}
+return nama.split(/\s+/)[0];
+}
+async function loadIdentitas(){
+let p=await q(sb.from("profiles").select("name").maybeSingle());
+let fallback=(user?.email||"").split("@")[0].replace(/[._-]+/g," ").trim();
+let nama=namaPanggilan(p?.name)||namaPanggilan(fallback)||"Mahasiswa";
+$("sapaan-user").innerText=`HALO, ${nama.toUpperCase()}!`;
+$("dashboard-avatar").innerText=(nama[0]||"?").toUpperCase();
+}
 
 /* AUTH */
 async function login(){
@@ -28,7 +40,7 @@ function konfirmasiLogout(){confirmBox("Yakin ingin keluar dari Student Planner?
 async function logout(){if(rt)await sb.removeChannel(rt);await sb.auth.signOut();$("dashboard-screen").classList.add("hidden");$("login-screen").classList.remove("hidden");$("email").value=$("password").value="";scrollTo(0,0)}
 async function bukaDashboard(){
 $("login-screen").classList.add("hidden");$("dashboard-screen").classList.remove("hidden");
-try{await migrasiLokal();await loadDashboard();pasangRealtime();scrollTo(0,0)}catch(e){info("Gagal memuat data: "+e.message)}
+try{await migrasiLokal();await Promise.all([loadDashboard(),loadIdentitas()]);pasangRealtime();scrollTo(0,0)}catch(e){info("Gagal memuat data: "+e.message)}
 }
 
 /* DATA */
@@ -85,6 +97,7 @@ if(rt)return;
 let refresh=()=>{clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>loadDashboard().catch(e=>info(e.message)),250)};
 rt=sb.channel("student-planner-"+user.id);
 ["schedules","tasks","wallets","transactions","savings"].forEach(table=>rt.on("postgres_changes",{event:"*",schema:"public",table,filter:`user_id=eq.${user.id}`},refresh));
+rt.on("postgres_changes",{event:"*",schema:"public",table:"profiles",filter:`user_id=eq.${user.id}`},()=>loadIdentitas().catch(()=>{}));
 rt.subscribe();
 }
 
