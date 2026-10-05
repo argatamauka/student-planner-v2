@@ -43,6 +43,51 @@ info(`Selamat datang, ${namaPanggilan(name)}! Planner-mu siap digunakan 🎉`);
 finally{setLoading(false)}
 }
 
+
+/* APP UPDATE */
+let appUpdateInfo=null;
+function compareVersions(a,b){
+let aa=String(a||"0").split(".").map(n=>Number(n)||0),bb=String(b||"0").split(".").map(n=>Number(n)||0),len=Math.max(aa.length,bb.length);
+for(let i=0;i<len;i++){let x=aa[i]||0,y=bb[i]||0;if(x>y)return 1;if(x<y)return -1}
+return 0;
+}
+function installedAndroidVersion(){
+try{
+if(window.AndroidNotifications&&typeof window.AndroidNotifications.getVersionName==="function"){
+let v=String(window.AndroidNotifications.getVersionName()||"").trim();
+if(v)return v;
+}
+}catch{}
+let m=navigator.userAgent.match(/StudentPlannerAndroid\/([0-9.]+)/i);
+return m?m[1]:null;
+}
+async function checkAppUpdate(){
+let current=installedAndroidVersion();if(!current)return;
+try{
+let res=await fetch("/version.json?ts="+Date.now(),{cache:"no-store"});
+if(!res.ok)return;
+let latest=await res.json();
+if(!latest?.latestVersion||compareVersions(current,latest.latestVersion)>=0)return;
+let snoozeKey="studentPlannerUpdateSnooze:"+latest.latestVersion;
+let snoozed=Number(localStorage.getItem(snoozeKey)||0);
+if(snoozed&&Date.now()-snoozed<12*60*60*1000)return;
+appUpdateInfo={...latest,currentVersion:current};
+$("update-current-version").innerText=current;
+$("update-latest-version").innerText=latest.latestVersion;
+$("update-title").innerText="VERSI "+latest.latestVersion+" TERSEDIA";
+$("update-message").innerText=latest.message||"Ada pembaruan Student Planner. Update untuk mendapatkan perbaikan dan fitur terbaru.";
+$("app-update-modal").classList.remove("hidden");
+}catch{}
+}
+function tundaUpdateApp(){
+if(appUpdateInfo)localStorage.setItem("studentPlannerUpdateSnooze:"+appUpdateInfo.latestVersion,String(Date.now()));
+$("app-update-modal").classList.add("hidden");
+}
+function downloadUpdateApp(){
+if(!appUpdateInfo?.downloadUrl)return;
+location.href=appUpdateInfo.downloadUrl;
+}
+
 /* AUTH */
 async function login(){
 let email=$("email").value.trim(),password=$("password").value;
@@ -355,5 +400,5 @@ $("login-screen").classList.add("hidden");
 }
 });
 function renderSemua(){renderJadwal();renderTugas();renderDompet();renderTransaksi();renderTabungan()}
-(async()=>{let{data:{session}}=await sb.auth.getSession();if(session&&!recoveryMode){user=session.user;await bukaDashboard()}})();
+(async()=>{checkAppUpdate();let{data:{session}}=await sb.auth.getSession();if(session&&!recoveryMode){user=session.user;await bukaDashboard()}})();
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){tutupConfirm();$("info-modal").classList.add("hidden")}});
