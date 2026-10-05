@@ -9,19 +9,23 @@ let d=formData();$("nama-header").innerText=(d.name||"NAMA MAHASISWA").replace("
 $("status-header").innerText=(d.academic_status||"ACTIVE").split("/")[0].trim().toUpperCase();$("prodi-header").innerText=(d.study_program||"PROGRAM STUDI").split("/")[0].trim().toUpperCase();
 }
 async function migrasiProfil(){
-let p=await q(sb.from("profiles").select("*").maybeSingle());if(p)return p;
+let p=await q(sb.from("profiles").select("*").maybeSingle());
+if(p){localStorage.setItem("studentPlannerProfileCloudMigrated","1");return p}
 let d={user_id:user.id},raw=localStorage.getItem("studentPlannerProfileV1");
-if(raw)try{let a=JSON.parse(raw);if(Array.isArray(a))oldKeys.forEach((k,i)=>d[k]=a[i]??"")}catch{}
-await q(sb.from("profiles").insert(d));return await q(sb.from("profiles").select("*").single());
+if(localStorage.getItem("studentPlannerProfileCloudMigrated")!=="1"&&raw)try{let a=JSON.parse(raw);if(Array.isArray(a))oldKeys.forEach((k,i)=>d[k]=a[i]??"")}catch{}
+await q(sb.from("profiles").insert(d));
+localStorage.setItem("studentPlannerProfileCloudMigrated","1");
+return await q(sb.from("profiles").select("*").single());
 }
 async function migrasiFoto(){
-if(profil?.avatar_path)return;
-let raw=localStorage.getItem("studentPlannerPhotoV1");if(!raw?.startsWith("data:image"))return;
+if(profil?.avatar_path){localStorage.setItem("studentPlannerPhotoCloudMigrated","1");return}
+if(localStorage.getItem("studentPlannerPhotoCloudMigrated")==="1")return;
+let raw=localStorage.getItem("studentPlannerPhotoV1");if(!raw?.startsWith("data:image")){localStorage.setItem("studentPlannerPhotoCloudMigrated","1");return;}
 try{
 let blob=await (await fetch(raw)).blob(),path=`${user.id}/avatar.jpg`;
 await q(sb.storage.from("profile-photos").upload(path,blob,{upsert:true,contentType:"image/jpeg"}));
 await q(sb.from("profiles").update({avatar_path:path,updated_at:new Date().toISOString()}).eq("user_id",user.id));
-profil.avatar_path=path;
+profil.avatar_path=path;localStorage.setItem("studentPlannerPhotoCloudMigrated","1");
 }catch{}
 }
 async function load(){
