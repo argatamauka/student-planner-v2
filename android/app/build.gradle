@@ -2,6 +2,8 @@ plugins {
     id 'com.android.application'
 }
 
+// permanent-release-trigger: 2.2.1
+
 def releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
 def hasReleaseSigning = releaseKeystorePath != null && !releaseKeystorePath.isBlank()
 
