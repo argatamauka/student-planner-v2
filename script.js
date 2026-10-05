@@ -2,45 +2,111 @@ const $=id=>document.getElementById(id),rupiah=n=>"Rp "+Number(n||0).toLocaleStr
 const aman=t=>String(t??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
 function info(t){$("info-text").innerText=t;$("info-modal").classList.remove("hidden")}
 function toggleTambah(id,reset){let tutup=!$(id).classList.contains("hidden");reset();$(id).classList.toggle("hidden",tutup)}
-let aksiConfirm=null,user=null,rt=null,refreshTimer=null;
+let aksiConfirm=null,user=null,rt=null,refreshTimer=null,recoveryMode=false;
 function confirmBox(t,a,b="LANJUTKAN"){$("confirm-text").innerText=t;$("confirm-ok").innerText=b;aksiConfirm=a;$("confirm-modal").classList.remove("hidden")}
 function tutupConfirm(){$("confirm-modal").classList.add("hidden");aksiConfirm=null}
 $("confirm-ok").onclick=()=>{let a=aksiConfirm;tutupConfirm();if(a)a()};
 async function q(p){let{data,error}=await p;if(error)throw error;return data}
+function setLoading(show,text="MEMUAT..."){let el=$("app-loading");if(!el)return;if(text)$("loading-text").innerText=text;el.classList.toggle("hidden",!show)}
+function setAuthButtons(disabled){["login-btn","register-btn"].forEach(id=>{let b=$(id);if(b)b.disabled=disabled})}
 function namaPanggilan(nama){
 nama=String(nama||"").trim();if(!nama)return"";
 if(nama.includes(",")){let setelah=nama.split(",")[1]?.trim();if(setelah)return setelah.split(/\s+/)[0]}
 return nama.split(/\s+/)[0];
 }
 async function loadIdentitas(){
-let p=await q(sb.from("profiles").select("name").maybeSingle());
-let fallback=(user?.email||"").split("@")[0].replace(/[._-]+/g," ").trim();
-let nama=namaPanggilan(p?.name)||namaPanggilan(fallback)||"Mahasiswa";
+let p=await q(sb.from("profiles").select("name,nim").maybeSingle());
+if(!p?.name?.trim()){
+$("onboarding-name").value="";
+$("onboarding-nim").value=p?.nim||"";
+$("onboarding-modal").classList.remove("hidden");
+$("sapaan-user").innerText="HALO!";
+$("dashboard-avatar").innerText="?";
+return false;
+}
+let nama=namaPanggilan(p.name);
 $("sapaan-user").innerText=`HALO, ${nama.toUpperCase()}!`;
 $("dashboard-avatar").innerText=(nama[0]||"?").toUpperCase();
+$("onboarding-modal").classList.add("hidden");
+return true;
+}
+async function simpanOnboarding(){
+let name=$("onboarding-name").value.trim(),nim=$("onboarding-nim").value.trim();
+if(name.length<2)return info("Masukkan nama lengkap terlebih dahulu.");
+setLoading(true,"MENYIAPKAN PROFIL...");
+try{
+await q(sb.from("profiles").upsert({user_id:user.id,name,nim:nim||null,updated_at:new Date().toISOString()},{onConflict:"user_id"}));
+$("onboarding-modal").classList.add("hidden");
+await loadIdentitas();
+info(`Selamat datang, ${namaPanggilan(name)}! Planner-mu siap digunakan 🎉`);
+}catch(e){info("Gagal menyimpan profil: "+e.message)}
+finally{setLoading(false)}
 }
 
 /* AUTH */
 async function login(){
 let email=$("email").value.trim(),password=$("password").value;
 if(!email||!password)return info("Isi email dan password.");
+setAuthButtons(true);setLoading(true,"MASUK KE AKUN...");
+try{
 let{data,error}=await sb.auth.signInWithPassword({email,password});
 if(error)return info(error.message);
 user=data.user;await bukaDashboard();
+}finally{setLoading(false);setAuthButtons(false)}
 }
 async function daftar(){
 let email=$("email").value.trim(),password=$("password").value;
 if(!email||password.length<6)return info("Isi email dan password minimal 6 karakter.");
+setAuthButtons(true);setLoading(true,"MEMBUAT AKUN...");
+try{
 let{data,error}=await sb.auth.signUp({email,password});
 if(error)return info(error.message);
 if(data.session){user=data.user;await bukaDashboard()}
-else info("Akun dibuat. Cek email untuk konfirmasi, lalu tekan MASUK.");
+else info("Akun berhasil dibuat. Cek email untuk konfirmasi, lalu kembali dan tekan MASUK.");
+}finally{setLoading(false);setAuthButtons(false)}
+}
+async function kirimResetPassword(){
+let email=$("email").value.trim();
+if(!email)return info("Masukkan email akunmu terlebih dahulu, lalu tekan LUPA PASSWORD.");
+setLoading(true,"MENGIRIM LINK RESET...");
+try{
+let{error}=await sb.auth.resetPasswordForEmail(email);
+if(error)return info(error.message);
+info("Link reset password sudah dikirim. Cek inbox atau folder spam emailmu.");
+}finally{setLoading(false)}
+}
+async function simpanPasswordBaru(){
+let a=$("new-password").value,b=$("confirm-new-password").value;
+if(a.length<6)return info("Password baru minimal 6 karakter.");
+if(a!==b)return info("Konfirmasi password belum sama.");
+setLoading(true,"MENYIMPAN PASSWORD...");
+try{
+let{error}=await sb.auth.updateUser({password:a});
+if(error)return info(error.message);
+$("password-recovery-modal").classList.add("hidden");
+$("new-password").value=$("confirm-new-password").value="";
+recoveryMode=false;
+await sb.auth.signOut();
+$("dashboard-screen").classList.add("hidden");
+$("login-screen").classList.remove("hidden");
+info("Password berhasil diubah. Silakan masuk menggunakan password baru.");
+}finally{setLoading(false)}
+}
+async function batalRecovery(){
+recoveryMode=false;
+$("password-recovery-modal").classList.add("hidden");
+await sb.auth.signOut();
+$("dashboard-screen").classList.add("hidden");
+$("login-screen").classList.remove("hidden");
 }
 function konfirmasiLogout(){confirmBox("Yakin ingin keluar dari Student Planner?",logout,"LOGOUT")}
 async function logout(){if(rt)await sb.removeChannel(rt);await sb.auth.signOut();$("dashboard-screen").classList.add("hidden");$("login-screen").classList.remove("hidden");$("email").value=$("password").value="";scrollTo(0,0)}
 async function bukaDashboard(){
 $("login-screen").classList.add("hidden");$("dashboard-screen").classList.remove("hidden");
-try{await migrasiLokal();await Promise.all([loadDashboard(),loadIdentitas()]);pasangRealtime();scrollTo(0,0)}catch(e){info("Gagal memuat data: "+e.message)}
+setLoading(true,"MENYIAPKAN PLANNER...");
+try{await migrasiLokal();await Promise.all([loadDashboard(),loadIdentitas()]);pasangRealtime();scrollTo(0,0)}
+catch(e){info("Gagal memuat data: "+e.message)}
+finally{setLoading(false)}
 }
 
 /* DATA */
@@ -106,7 +172,7 @@ function htmlJadwal(j,i){return `<div class="item"><div class="item-info"><stron
 function renderJadwal(){
 let h=hariIni(),d=jadwal.map((x,i)=>({...x,index:i})).filter(x=>x.hari===h).sort((a,b)=>a.waktu.localeCompare(b.waktu));
 $("hari-sekarang").innerText=h;$("summary-jadwal").innerText=d.length;
-$("jadwal-ringkas").innerHTML=d.length?d.map(x=>htmlJadwal(x,x.index)).join(""):`<div class="empty">Tidak ada kuliah hari ini 🎉</div>`;
+$("jadwal-ringkas").innerHTML=d.length?d.map(x=>htmlJadwal(x,x.index)).join(""):`<div class="empty"><strong>Belum ada kuliah hari ini.</strong><span>Tambahkan jadwal agar planner bisa mengingatkan aktivitas akademikmu.</span><button class="empty-action" onclick="bukaTambahJadwal()">+ TAMBAH JADWAL</button></div>`;
 $("jadwal-lengkap").innerHTML=hariUrut.map(h=>{let x=jadwal.map((j,i)=>({...j,index:i})).filter(j=>j.hari===h).sort((a,b)=>a.waktu.localeCompare(b.waktu));return x.length?`<h3 class="badge white">${h}</h3>${x.map(j=>htmlJadwal(j,j.index)).join("")}`:""}).join("");
 }
 function resetFormJadwal(){editJadwal=null;["input-matkul","input-waktu","input-ruangan"].forEach(id=>$(id).value="");$("input-hari").value="";$("simpan-jadwal").innerText="SIMPAN";$("batal-edit-jadwal").classList.add("hidden")}
@@ -135,7 +201,7 @@ function htmlTugas(t,i){let[s,k]=statusDeadline(t);return `<div class="item task
 function renderTugas(){
 let d=tugas.map((x,i)=>({...x,index:i})).sort((a,b)=>a.selesai!==b.selesai?a.selesai-b.selesai:new Date(a.deadline)-new Date(b.deadline)),aktif=d.filter(x=>!x.selesai),selesai=d.filter(x=>x.selesai);
 $("count-tugas").innerText=$("summary-tugas").innerText=aktif.length;$("count-selesai").innerText=selesai.length;
-$("tugas-ringkas").innerHTML=aktif.length?aktif.map(x=>htmlTugas(x,x.index)).join(""):`<div class="empty">Semua tugas selesai 🎉</div>`;
+$("tugas-ringkas").innerHTML=aktif.length?aktif.map(x=>htmlTugas(x,x.index)).join(""):`<div class="empty"><strong>Belum ada tugas aktif 🎉</strong><span>Tambahkan tugas baru supaya deadline tetap terpantau.</span><button class="empty-action" onclick="bukaTambahTugas()">+ TAMBAH TUGAS</button></div>`;
 $("tugas-selesai-list").innerHTML=selesai.length?selesai.map(x=>htmlTugas(x,x.index)).join(""):`<div class="empty">Belum ada tugas selesai.</div>`;
 }
 function resetFormTugas(){editTugas=null;["input-tugas","input-matkul-tugas","input-deadline"].forEach(id=>$(id).value="");$("simpan-tugas").innerText="SIMPAN";$("batal-edit-tugas").classList.add("hidden")}
@@ -207,7 +273,7 @@ function renderTransaksi(){
 let masuk=transaksi.filter(x=>x.tipe==="masuk").reduce((a,b)=>a+b.nominal,0),keluar=transaksi.filter(x=>x.tipe==="keluar").reduce((a,b)=>a+b.nominal,0);
 $("total-masuk").innerText=rupiah(masuk);$("total-keluar").innerText=rupiah(keluar);["semua","masuk","keluar"].forEach(f=>$("filter-"+f).classList.toggle("active",filterTransaksi===f));
 let d=transaksi.map((x,i)=>({...x,index:i})).filter(x=>filterTransaksi==="semua"||x.tipe===filterTransaksi);
-$("daftar-riwayat").innerHTML=d.length?d.map(x=>`<div class="history-row"><div class="history-info"><strong>${aman(x.kategori)}</strong><small>${aman(x.dompet)} • ${formatTanggalTransaksi(x.tanggal)}</small></div><div class="history-side"><span class="amount ${x.tipe==="masuk"?"in":""}">${x.tipe==="masuk"?"+":"-"}${rupiah(x.nominal)}</span><div class="history-actions"><button class="edit-small" onclick="bukaEditTransaksi(${x.index})">EDIT</button><button class="delete" onclick="hapusTransaksi(${x.index})">X</button></div></div></div>`).join(""):`<div class="empty">${filterTransaksi==="semua"?"Belum ada transaksi.":`Belum ada transaksi ${filterTransaksi}.`}</div>`;
+$("daftar-riwayat").innerHTML=d.length?d.map(x=>`<div class="history-row"><div class="history-info"><strong>${aman(x.kategori)}</strong><small>${aman(x.dompet)} • ${formatTanggalTransaksi(x.tanggal)}</small></div><div class="history-side"><span class="amount ${x.tipe==="masuk"?"in":""}">${x.tipe==="masuk"?"+":"-"}${rupiah(x.nominal)}</span><div class="history-actions"><button class="edit-small" onclick="bukaEditTransaksi(${x.index})">EDIT</button><button class="delete" onclick="hapusTransaksi(${x.index})">X</button></div></div></div>`).join(""):`<div class="empty"><strong>${filterTransaksi==="semua"?"Belum ada transaksi.":`Belum ada transaksi ${filterTransaksi}.`}</strong><span>Catat pemasukan atau pengeluaran supaya saldo dan riwayatmu tetap rapi.</span></div>`;
 }
 
 /* TABUNGAN */
@@ -233,6 +299,13 @@ $("sisa-target").innerText=!saving.target_amount?"Atur target tabungan terlebih 
 }
 
 /* START */
+sb.auth.onAuthStateChange((event,session)=>{
+if(event==="PASSWORD_RECOVERY"){
+recoveryMode=true;user=session?.user||null;
+$("password-recovery-modal").classList.remove("hidden");
+$("login-screen").classList.add("hidden");
+}
+});
 function renderSemua(){renderJadwal();renderTugas();renderDompet();renderTransaksi();renderTabungan()}
-(async()=>{let{data:{session}}=await sb.auth.getSession();if(session){user=session.user;await bukaDashboard()}})();
+(async()=>{let{data:{session}}=await sb.auth.getSession();if(session&&!recoveryMode){user=session.user;await bukaDashboard()}})();
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){tutupConfirm();$("info-modal").classList.add("hidden")}});
