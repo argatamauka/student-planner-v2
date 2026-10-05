@@ -2,7 +2,7 @@ plugins {
     id 'com.android.application'
 }
 
-// permanent-release-trigger: 2.2.12
+// permanent-release-trigger: 2.3.0
 
 def releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
 def hasReleaseSigning = releaseKeystorePath != null && !releaseKeystorePath.isBlank()
@@ -15,8 +15,8 @@ android {
         applicationId "com.argatamauka.studentplanner"
         minSdk 24
         targetSdk 35
-        versionCode 15
-        versionName "2.2.12"
+        versionCode 16
+        versionName "2.3.0"
     }
 
     signingConfigs {
@@ -43,4 +43,38 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+}
+
+
+dependencies {
+    implementation "androidx.webkit:webkit:1.12.1"
+}
+
+def generatedWebAssets = file("$buildDir/generated/webAssets")
+
+android.sourceSets.main.assets.srcDir(generatedWebAssets)
+
+tasks.register("copyWebAssets", Copy) {
+    from(file("${rootProject.projectDir}/..")) {
+        include "index.html"
+        include "style.css"
+        include "script.js"
+        include "supabase-config.js"
+        include "offline.js"
+        include "matakuliah.html"
+        include "matakuliah.css"
+        include "matakuliah.js"
+        include "profil.html"
+        include "profil.css"
+        include "profil.js"
+        include "pwa.js"
+        include "sw.js"
+        include "manifest.webmanifest"
+        include "app-icon.svg"
+    }
+    into(generatedWebAssets)
+}
+
+tasks.named("preBuild").configure {
+    dependsOn("copyWebAssets")
 }
