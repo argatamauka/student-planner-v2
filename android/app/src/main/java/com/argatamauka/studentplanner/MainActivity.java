@@ -19,7 +19,9 @@ import android.provider.Settings;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.Gravity;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -33,9 +35,17 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import java.io.File;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://studentplannerarga.vercel.app/";
@@ -56,6 +66,15 @@ public class MainActivity extends Activity {
     private TextView updateProgressText;
     private Button updateInstallButton;
 
+    private Dialog aboutDialog;
+    private TextView aboutLatestVersion;
+    private TextView aboutStatus;
+    private Button aboutCheckButton;
+    private Button aboutUpdateButton;
+    private String aboutUpdateUrl = null;
+    private String aboutUpdateVersion = null;
+    private final ExecutorService networkExecutor = Executors.newSingleThreadExecutor();
+
     private final Set<String> appHosts = new HashSet<>(Arrays.asList(
         "studentplannerarga.vercel.app",
         "student-planner-roan.vercel.app",
@@ -70,7 +89,27 @@ public class MainActivity extends Activity {
         registerUpdateReceiver();
 
         webView = new WebView(this);
-        setContentView(webView);
+
+        FrameLayout root = new FrameLayout(this);
+        root.addView(webView, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+
+        Button aboutButton = new Button(this);
+        aboutButton.setText("i");
+        aboutButton.setTextSize(16);
+        aboutButton.setTypeface(null, android.graphics.Typeface.BOLD);
+        aboutButton.setContentDescription("Tentang Student Planner");
+        aboutButton.setAllCaps(false);
+        aboutButton.setOnClickListener(v -> showNativeAboutDialog());
+
+        FrameLayout.LayoutParams aboutParams = new FrameLayout.LayoutParams(dp(46), dp(46));
+        aboutParams.gravity = Gravity.END | Gravity.BOTTOM;
+        aboutParams.setMargins(0, 0, dp(14), dp(14));
+        root.addView(aboutButton, aboutParams);
+
+        setContentView(root);
 
         CookieManager cookies = CookieManager.getInstance();
         cookies.setAcceptCookie(true);
@@ -83,7 +122,7 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.2.9");
+        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.2.10");
 
         webView.addJavascriptInterface(new NotificationBridge(), "AndroidNotifications");
 
@@ -518,6 +557,231 @@ public class MainActivity extends Activity {
         checkPendingUpdateDownload();
     }
 
+
+    private String currentVersionName() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private void showNativeAboutDialog() {
+        if (isFinishing() || isDestroyed()) return;
+
+        aboutDialog = new Dialog(this);
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dp(20), dp(20), dp(20), dp(20));
+
+        TextView badge = new TextView(this);
+        badge.setText("TENTANG APLIKASI");
+        badge.setTextSize(12);
+        badge.setTypeface(null, android.graphics.Typeface.BOLD);
+        root.addView(badge);
+
+        TextView title = new TextView(this);
+        title.setText("STUDENT PLANNER");
+        title.setTextSize(21);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        titleParams.topMargin = dp(4);
+        root.addView(title, titleParams);
+
+        TextView developer = new TextView(this);
+        developer.setText("Developer: Arga Setia Tamauka\nInformatics Student & Web Developer");
+        developer.setTextSize(13);
+        LinearLayout.LayoutParams developerParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        developerParams.topMargin = dp(12);
+        root.addView(developer, developerParams);
+
+        TextView current = new TextView(this);
+        current.setText("Versi terpasang: " + currentVersionName());
+        current.setTextSize(14);
+        current.setTypeface(null, android.graphics.Typeface.BOLD);
+        LinearLayout.LayoutParams currentParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        currentParams.topMargin = dp(16);
+        root.addView(current, currentParams);
+
+        aboutLatestVersion = new TextView(this);
+        aboutLatestVersion.setText("Versi terbaru: -");
+        aboutLatestVersion.setTextSize(14);
+        root.addView(aboutLatestVersion);
+
+        aboutStatus = new TextView(this);
+        aboutStatus.setText("Tekan CEK UPDATE untuk memeriksa versi terbaru.");
+        aboutStatus.setTextSize(12);
+        LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        statusParams.topMargin = dp(12);
+        root.addView(aboutStatus, statusParams);
+
+        aboutCheckButton = new Button(this);
+        aboutCheckButton.setText("CEK UPDATE");
+        aboutCheckButton.setOnClickListener(v -> checkNativeUpdate());
+        LinearLayout.LayoutParams checkParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        checkParams.topMargin = dp(14);
+        root.addView(aboutCheckButton, checkParams);
+
+        aboutUpdateButton = new Button(this);
+        aboutUpdateButton.setText("UNDUH UPDATE");
+        aboutUpdateButton.setVisibility(View.GONE);
+        aboutUpdateButton.setOnClickListener(v -> {
+            if (aboutUpdateUrl == null || aboutUpdateVersion == null) return;
+            if (aboutDialog != null) aboutDialog.dismiss();
+            beginUpdateDownload(aboutUpdateUrl, aboutUpdateVersion);
+        });
+        LinearLayout.LayoutParams updateParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        updateParams.topMargin = dp(8);
+        root.addView(aboutUpdateButton, updateParams);
+
+        TextView changelog = new TextView(this);
+        changelog.setText("Yang baru:\n• Update APK langsung di aplikasi\n• Progress download 0–100%\n• Tombol INSTAL UPDATE setelah download selesai");
+        changelog.setTextSize(12);
+        LinearLayout.LayoutParams changelogParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        changelogParams.topMargin = dp(16);
+        root.addView(changelog, changelogParams);
+
+        Button close = new Button(this);
+        close.setText("TUTUP");
+        close.setOnClickListener(v -> aboutDialog.dismiss());
+        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        closeParams.topMargin = dp(12);
+        root.addView(close, closeParams);
+
+        aboutDialog.setContentView(root);
+        aboutDialog.setCancelable(true);
+        aboutDialog.show();
+
+        Window window = aboutDialog.getWindow();
+        if (window != null) {
+            window.setLayout(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            );
+        }
+    }
+
+    private void checkNativeUpdate() {
+        if (aboutCheckButton == null || aboutStatus == null) return;
+
+        aboutCheckButton.setEnabled(false);
+        aboutCheckButton.setText("MEMERIKSA...");
+        aboutUpdateButton.setVisibility(View.GONE);
+        aboutStatus.setText("Memeriksa update...");
+        aboutUpdateUrl = null;
+        aboutUpdateVersion = null;
+
+        networkExecutor.execute(() -> {
+            HttpURLConnection connection = null;
+            try {
+                URL url = new URL("https://api.github.com/repos/argatamauka/student-planner-v2/releases/latest");
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setConnectTimeout(12000);
+                connection.setReadTimeout(12000);
+                connection.setRequestProperty("Accept", "application/vnd.github+json");
+                connection.setRequestProperty("User-Agent", "StudentPlannerAndroid/" + currentVersionName());
+
+                int code = connection.getResponseCode();
+                if (code < 200 || code >= 300) throw new Exception("HTTP " + code);
+
+                BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream())
+                );
+                StringBuilder body = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) body.append(line);
+                reader.close();
+
+                JSONObject release = new JSONObject(body.toString());
+                String latest = release.optString("tag_name", "").replaceFirst("^[vV]", "");
+                JSONArray assets = release.optJSONArray("assets");
+                String apkUrl = null;
+
+                if (assets != null) {
+                    for (int i = 0; i < assets.length(); i++) {
+                        JSONObject asset = assets.optJSONObject(i);
+                        if (asset != null && "Student-Planner-v2.apk".equals(asset.optString("name"))) {
+                            apkUrl = asset.optString("browser_download_url", "");
+                            break;
+                        }
+                    }
+                }
+
+                if (latest.isEmpty() || apkUrl == null || apkUrl.isEmpty()) {
+                    throw new Exception("Release APK tidak ditemukan");
+                }
+
+                final String latestFinal = latest;
+                final String apkUrlFinal = apkUrl;
+                runOnUiThread(() -> {
+                    if (aboutLatestVersion != null) aboutLatestVersion.setText("Versi terbaru: " + latestFinal);
+                    if (compareVersionNames(currentVersionName(), latestFinal) >= 0) {
+                        aboutStatus.setText("Student Planner sudah menggunakan versi terbaru ✅");
+                        aboutUpdateButton.setVisibility(View.GONE);
+                    } else {
+                        aboutUpdateVersion = latestFinal;
+                        aboutUpdateUrl = apkUrlFinal;
+                        aboutStatus.setText("Update v" + latestFinal + " tersedia.");
+                        aboutUpdateButton.setText("UNDUH v" + latestFinal);
+                        aboutUpdateButton.setVisibility(View.VISIBLE);
+                    }
+                    aboutCheckButton.setEnabled(true);
+                    aboutCheckButton.setText("CEK UPDATE");
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    if (aboutStatus != null) aboutStatus.setText("Gagal memeriksa update. Coba lagi saat internet aktif.");
+                    if (aboutCheckButton != null) {
+                        aboutCheckButton.setEnabled(true);
+                        aboutCheckButton.setText("CEK UPDATE");
+                    }
+                });
+            } finally {
+                if (connection != null) connection.disconnect();
+            }
+        });
+    }
+
+    private int compareVersionNames(String a, String b) {
+        String[] aa = String.valueOf(a).split("\\.");
+        String[] bb = String.valueOf(b).split("\\.");
+        int len = Math.max(aa.length, bb.length);
+
+        for (int i = 0; i < len; i++) {
+            int x = 0;
+            int y = 0;
+            try { if (i < aa.length) x = Integer.parseInt(aa[i].replaceAll("[^0-9]", "")); } catch (Exception ignored) {}
+            try { if (i < bb.length) y = Integer.parseInt(bb[i].replaceAll("[^0-9]", "")); } catch (Exception ignored) {}
+            if (x > y) return 1;
+            if (x < y) return -1;
+        }
+        return 0;
+    }
+
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         webView.saveState(outState);
@@ -555,6 +819,10 @@ public class MainActivity extends Activity {
         if (updateDialog != null) {
             try { updateDialog.dismiss(); } catch (Exception ignored) {}
         }
+        if (aboutDialog != null) {
+            try { aboutDialog.dismiss(); } catch (Exception ignored) {}
+        }
+        networkExecutor.shutdownNow();
         if (updateDownloadReceiver != null) {
             try { unregisterReceiver(updateDownloadReceiver); } catch (Exception ignored) {}
         }
