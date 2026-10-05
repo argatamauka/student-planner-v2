@@ -60,7 +60,16 @@ if(!email||password.length<6)return info("Isi email dan password minimal 6 karak
 setAuthButtons(true);setLoading(true,"MEMBUAT AKUN...");
 try{
 let{data,error}=await sb.auth.signUp({email,password});
-if(error)return info(error.message);
+if(error){
+let pesan=String(error.message||"").toLowerCase();
+if(pesan.includes("already")||pesan.includes("registered")||pesan.includes("exists")){
+return info("Akun dengan email ini sudah terdaftar. Silakan tekan MASUK atau gunakan LUPA PASSWORD.");
+}
+return info(error.message);
+}
+if(data?.user&&Array.isArray(data.user.identities)&&data.user.identities.length===0){
+return info("Akun dengan email ini sudah terdaftar. Silakan tekan MASUK atau gunakan LUPA PASSWORD.");
+}
 if(data.session){user=data.user;await bukaDashboard()}
 else info("Akun berhasil dibuat. Cek email untuk konfirmasi, lalu kembali dan tekan MASUK.");
 }finally{setLoading(false);setAuthButtons(false)}
