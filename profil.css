@@ -93,3 +93,24 @@ body{padding:12px}
 .danger-card{align-items:stretch;flex-direction:column}
 .delete-account-btn{width:100%}
 }
+
+
+/* NOTIFICATIONS */
+.notification-card{padding:16px;margin:22px 0 18px;border:4px solid #000;border-radius:12px;background:var(--yellow);box-shadow:5px 5px 0 #000}
+.notification-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-bottom:10px;margin-bottom:10px;border-bottom:3px solid #000}
+.notification-head h2{margin:2px 0 0;font-size:1.15rem}
+.notification-status{padding:4px 7px;border:2px solid #000;border-radius:999px;background:#fff;font-size:9px;font-weight:700;white-space:nowrap}
+.notification-status.active{background:var(--green)}
+.notification-copy{margin-bottom:12px;font-size:11px;font-weight:700;line-height:1.45}
+.notification-toggle{display:flex;align-items:flex-start;gap:9px;padding:10px;margin-bottom:9px;border:3px solid #000;border-radius:8px;background:#fff;cursor:pointer}
+.notification-toggle input{width:21px;height:21px;flex:0 0 21px;margin:1px 0 0;accent-color:#000}
+.notification-toggle strong{display:block;font-size:11px}
+.notification-toggle small{display:block;margin-top:2px;font-size:9px;letter-spacing:0;opacity:.6}
+.notification-field{display:block;margin-bottom:9px}
+.notification-field>span{display:block;margin-bottom:4px;font-size:9px;font-weight:700;letter-spacing:.05em}
+.notification-field select{width:100%;padding:9px;border:3px solid #000;border-radius:7px;background:#fff;font:inherit;font-size:11px;font-weight:700}
+.notification-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.notification-save{width:100%;padding:10px;border:3px solid #000;border-radius:7px;background:#000;color:#fff;box-shadow:3px 3px 0 #000;font:inherit;font-weight:700;cursor:pointer}
+.notification-save:active{transform:translate(3px,3px);box-shadow:none}
+.notification-help{margin:9px 0 0;font-size:9px;font-weight:700;line-height:1.4;opacity:.65}
+@media(max-width:430px){.notification-grid{grid-template-columns:1fr}}
