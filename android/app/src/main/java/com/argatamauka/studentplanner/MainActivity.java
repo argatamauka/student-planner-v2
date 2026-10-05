@@ -34,6 +34,8 @@ import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import android.webkit.WebResourceError;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -49,9 +51,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import androidx.webkit.WebViewAssetLoader;
 
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://studentplannerarga.vercel.app/";
+    private static final String LOCAL_APP_URL = "https://studentplannerarga.vercel.app/__offline__/index.html";
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private static final int NOTIFICATION_PERMISSION_REQUEST = 1002;
     private static final String UPDATE_PREFS = "student_planner_updates";
@@ -59,6 +63,7 @@ public class MainActivity extends Activity {
     private static final String UPDATE_VERSION = "version";
 
     private WebView webView;
+    private WebViewAssetLoader assetLoader;
     private ValueCallback<Uri[]> fileCallback;
     private BroadcastReceiver updateDownloadReceiver;
     private boolean updateSettingsRequested = false;
@@ -92,6 +97,10 @@ public class MainActivity extends Activity {
         registerUpdateReceiver();
 
         webView = new WebView(this);
+        assetLoader = new WebViewAssetLoader.Builder()
+            .setDomain("studentplannerarga.vercel.app")
+            .addPathHandler("/__offline__/", new WebViewAssetLoader.AssetsPathHandler(this))
+            .build();
         setContentView(webView);
 
         CookieManager cookies = CookieManager.getInstance();
@@ -105,11 +114,17 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.2.12");
+        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.3.0");
 
         webView.addJavascriptInterface(new NotificationBridge(), "AndroidNotifications");
 
         webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                WebResourceResponse local = assetLoader.shouldInterceptRequest(request.getUrl());
+                return local != null ? local : super.shouldInterceptRequest(view, request);
+            }
+
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
@@ -124,13 +139,29 @@ public class MainActivity extends Activity {
             }
 
             @Override
+            public void onReceivedError(
+                    WebView view,
+                    WebResourceRequest request,
+                    WebResourceError error) {
+                super.onReceivedError(view, request, error);
+                if (!request.isForMainFrame()) return;
+                Uri uri = request.getUrl();
+                String path = uri != null ? uri.getPath() : "";
+                if (uri != null &&
+                    "studentplannerarga.vercel.app".equalsIgnoreCase(uri.getHost()) &&
+                    (path == null || !path.startsWith("/__offline__/"))) {
+                    view.loadUrl(LOCAL_APP_URL);
+                }
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 injectNativeAboutButton();
             }
         });
 
-        webView.setWebChromeClient(new WebChromeClient() {
+                webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(
                     WebView webView,
