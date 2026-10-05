@@ -85,6 +85,9 @@ $("update-current-version").innerText=current;
 $("update-latest-version").innerText=latestVersion;
 $("update-title").innerText="VERSI "+latestVersion+" TERSEDIA";
 $("update-message").innerText="Ada pembaruan Student Planner. Update untuk mendapatkan perbaikan dan fitur terbaru.";
+let nativeUpdater=false;
+try{nativeUpdater=!!window.AndroidNotifications?.supportsInAppUpdate?.()}catch{}
+$("update-now-btn").innerText=nativeUpdater?"UPDATE DI APLIKASI":"DOWNLOAD UPDATE";
 $("app-update-modal").classList.remove("hidden");
 }catch{}
 }
@@ -94,6 +97,14 @@ $("app-update-modal").classList.add("hidden");
 }
 function downloadUpdateApp(){
 if(!appUpdateInfo?.downloadUrl)return;
+try{
+if(window.AndroidNotifications?.supportsInAppUpdate?.()&&typeof window.AndroidNotifications.downloadAndInstallUpdate==="function"){
+window.AndroidNotifications.downloadAndInstallUpdate(appUpdateInfo.downloadUrl,appUpdateInfo.latestVersion);
+$("app-update-modal").classList.add("hidden");
+info("Update sedang diunduh di dalam aplikasi. Setelah selesai, Android akan meminta konfirmasi untuk memasangnya.");
+return;
+}
+}catch{}
 location.href=appUpdateInfo.downloadUrl;
 }
 
