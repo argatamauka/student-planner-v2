@@ -96,6 +96,11 @@
 </div>
 <p class="notification-copy">Dapatkan pengingat jadwal kuliah dan deadline tugas langsung di HP.</p>
 
+<button id="notification-settings-toggle" class="notification-open" type="button" aria-expanded="false" onclick="toggleNotificationSettings()">
+<span>ATUR NOTIFIKASI</span><span class="notification-arrow">→</span>
+</button>
+
+<div id="notification-settings" class="notification-settings hidden">
 <label class="notification-toggle">
 <input id="notif-schedule" type="checkbox" checked>
 <span><strong>Jadwal kuliah</strong><small>Ingatkan sebelum kelas dimulai.</small></span>
@@ -137,6 +142,7 @@
 
 <button id="save-notification-btn" class="notification-save" onclick="simpanNotifikasi()">AKTIFKAN & SIMPAN</button>
 <p id="notification-help" class="notification-help"></p>
+</div>
 </section>
 
 <section class="danger-card">
