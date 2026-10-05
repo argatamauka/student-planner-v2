@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Student Planner</title>
+<meta name="theme-color" content="#fde047">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Student Planner v2">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="app-icon.svg" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -23,6 +30,7 @@
 <button class="dark" onclick="login()">MASUK</button>
 <button class="white" onclick="daftar()">DAFTAR</button>
 </div>
+<button class="install-app hidden" onclick="installApp()">INSTALL APP</button>
 </section>
 
 <main id="dashboard-screen" class="hidden">
@@ -193,6 +201,7 @@
 </section>
 
 </div>
+<button class="install-app app-install-main hidden" onclick="installApp()">INSTALL APP</button>
 <button class="logout" onclick="konfirmasiLogout()">LOGOUT</button>
 </main>
 </div>
@@ -217,5 +226,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
 <script src="script.js"></script>
+<script src="pwa.js"></script>
 </body>
 </html>
