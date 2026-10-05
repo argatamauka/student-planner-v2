@@ -115,6 +115,7 @@ let jadwal=[],tugas=[],wallets=[],transaksi=[],saving={target_name:"",target_amo
 let editJadwal=null,editTugas=null,editTransaksi=null,filterTransaksi="semua";
 
 async function migrasiLokal(){
+if(localStorage.getItem("studentPlannerCloudMigrated")==="1")return;
 let raw=localStorage.getItem("studentPlannerV1");if(!raw)return;
 let [a,b,c]=await Promise.all([
 q(sb.from("schedules").select("id").limit(1)),
