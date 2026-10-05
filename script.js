@@ -310,8 +310,18 @@ await sb.auth.signOut();
 $("dashboard-screen").classList.add("hidden");
 $("login-screen").classList.remove("hidden");
 }
-function konfirmasiLogout(){confirmBox("Yakin ingin keluar dari Student Planner?",logout,"LOGOUT")}
-async function logout(){if(rt)await sb.removeChannel(rt);try{window.AndroidNotifications?.clearReminders()}catch{}if(user)offlineStore?.clearUser(user.id);await sb.auth.signOut();$("dashboard-screen").classList.add("hidden");$("login-screen").classList.remove("hidden");$("email").value=$("password").value="";scrollTo(0,0)}
+function konfirmasiLogout(){
+let pending=user?(offlineStore?.pending(user.id)||0):0;
+if(pending&&!cloudReady())return info(`Masih ada ${pending} perubahan offline yang belum tersinkron. Sambungkan internet sebelum logout agar perubahan tidak hilang.`);
+confirmBox("Yakin ingin keluar dari Student Planner?",logout,"LOGOUT")
+}
+async function logout(){
+if(user&&(offlineStore?.pending(user.id)||0)>0){
+if(!cloudReady())return info("Sambungkan internet untuk menyinkronkan perubahan sebelum logout.");
+await syncOfflineChanges(true);
+if((offlineStore?.pending(user.id)||0)>0)return info("Masih ada perubahan yang belum berhasil tersinkron. Coba lagi sebelum logout.");
+}
+if(rt)await sb.removeChannel(rt);try{window.AndroidNotifications?.clearReminders()}catch{}if(user)offlineStore?.clearUser(user.id);await sb.auth.signOut();$("dashboard-screen").classList.add("hidden");$("login-screen").classList.remove("hidden");$("email").value=$("password").value="";scrollTo(0,0)}
 async function bukaDashboard(){
 $("login-screen").classList.add("hidden");$("dashboard-screen").classList.remove("hidden");
 setLoading(true,"MENYIAPKAN PLANNER...");
