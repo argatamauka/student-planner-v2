@@ -821,7 +821,7 @@ public class MainActivity extends Activity {
         changeCard.addView(changeTitle);
 
         TextView changelog = new TextView(this);
-        changelog.setText("• Update langsung di aplikasi\n• Progress download 0–100%\n• Instal hanya setelah download selesai");
+        changelog.setText("• Mode offline beta\n• Perubahan disimpan di HP saat offline\n• Sinkron otomatis saat internet kembali");
         changelog.setTextSize(11);
         changelog.setTextColor(Color.BLACK);
         LinearLayout.LayoutParams changelogParams = new LinearLayout.LayoutParams(
