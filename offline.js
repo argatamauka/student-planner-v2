@@ -54,7 +54,12 @@ async function exec(sb,userId,op){
     case "course_delete":{let{error}=await sb.from("courses").delete().eq("id",op.id);if(error)throw error;return}
     case "wallet_insert":{
       let{error}=await sb.from("wallets").insert({id:op.id,user_id:userId,...d});
-      if(error&&error.code!=="23505")throw error;return;
+      if(error?.code==="23505"){
+        let{data:existing,error:checkError}=await sb.from("wallets").select("id").eq("id",op.id).maybeSingle();
+        if(checkError)throw checkError;
+        if(existing?.id===op.id)return;
+      }
+      if(error)throw error;return;
     }
     case "wallet_delete":{let{error}=await sb.from("wallets").delete().eq("id",op.id);if(error)throw error;return}
     case "tx_record":{
