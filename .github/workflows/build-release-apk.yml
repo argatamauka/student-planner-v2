@@ -64,16 +64,22 @@ jobs:
         working-directory: android
         run: gradle :app:assembleRelease --no-daemon
 
-      - name: Verify signed APK exists
-        run: test -f android/app/build/outputs/apk/release/app-release.apk
+      - name: Verify signed APK
+        run: |
+          test -f android/app/build/outputs/apk/release/app-release.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs android/app/build/outputs/apk/release/app-release.apk
 
       - name: Rename APK
-        run: cp android/app/build/outputs/apk/release/app-release.apk Student-Planner-v2-release.apk
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk Student-Planner-v2-release.apk
+          sha256sum Student-Planner-v2-release.apk > Student-Planner-v2-release.apk.sha256
 
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
           name: Student-Planner-v2-Signed-Release
-          path: Student-Planner-v2-release.apk
+          path: |
+            Student-Planner-v2-release.apk
+            Student-Planner-v2-release.apk.sha256
           if-no-files-found: error
           retention-days: 90
