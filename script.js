@@ -45,7 +45,7 @@ finally{setLoading(false)}
 
 
 /* APP UPDATE */
-let appUpdateInfo=null;
+let appUpdateInfo=null,appUpdateDownloadState="idle";
 function compareVersions(a,b){
 let aa=String(a||"0").split(".").map(n=>Number(n)||0),bb=String(b||"0").split(".").map(n=>Number(n)||0),len=Math.max(aa.length,bb.length);
 for(let i=0;i<len;i++){let x=aa[i]||0,y=bb[i]||0;if(x>y)return 1;if(x<y)return -1}
@@ -93,9 +93,19 @@ $("update-current-version").innerText=current;
 $("update-latest-version").innerText=latestVersion;
 $("update-title").innerText="VERSI "+latestVersion+" TERSEDIA";
 $("update-message").innerText="Ada pembaruan Student Planner. Update untuk mendapatkan perbaikan dan fitur terbaru.";
-let nativeUpdater=false;
-try{nativeUpdater=!!window.AndroidNotifications?.supportsInAppUpdate?.()}catch{}
-$("update-now-btn").innerText=nativeUpdater?"UPDATE DI APLIKASI":"DOWNLOAD UPDATE";
+appUpdateDownloadState="idle";
+$("update-download-progress").classList.add("hidden");
+$("update-progress-fill").style.width="0%";
+$("update-progress-percent").innerText="0%";
+$("update-progress-label").innerText="MENYIAPKAN DOWNLOAD...";
+$("update-now-btn").disabled=false;
+$("update-later-btn").disabled=false;
+let stagedUpdater=false,nativeUpdater=false;
+try{
+stagedUpdater=!!window.AndroidNotifications?.supportsStagedInAppUpdate?.();
+nativeUpdater=!!window.AndroidNotifications?.supportsInAppUpdate?.();
+}catch{}
+$("update-now-btn").innerText=stagedUpdater?"UNDUH UPDATE":nativeUpdater?"UPDATE DI APLIKASI":"DOWNLOAD UPDATE";
 $("app-update-modal").classList.remove("hidden");
 return true;
 }catch(e){
@@ -111,18 +121,62 @@ function tundaUpdateApp(){
 if(appUpdateInfo)localStorage.setItem("studentPlannerUpdateSnooze:"+appUpdateInfo.latestVersion,String(Date.now()));
 $("app-update-modal").classList.add("hidden");
 }
+window.onNativeUpdateProgress=function(state,progress){
+let pct=Math.max(0,Math.min(100,Number(progress)||0));
+appUpdateDownloadState=state;
+$("app-update-modal").classList.remove("hidden");
+$("update-download-progress").classList.remove("hidden");
+$("update-progress-fill").style.width=pct+"%";
+$("update-progress-percent").innerText=pct+"%";
+if(state==="downloading"){
+$("update-progress-label").innerText="MENGUNDUH UPDATE...";
+$("update-now-btn").innerText="MENGUNDUH "+pct+"%";
+$("update-now-btn").disabled=true;
+$("update-later-btn").disabled=true;
+}else if(state==="ready"){
+$("update-progress-label").innerText="DOWNLOAD SELESAI ✅";
+$("update-now-btn").innerText="INSTAL UPDATE";
+$("update-now-btn").disabled=false;
+$("update-later-btn").disabled=false;
+}else if(state==="failed"){
+$("update-progress-label").innerText="DOWNLOAD GAGAL";
+$("update-now-btn").innerText="COBA LAGI";
+$("update-now-btn").disabled=false;
+$("update-later-btn").disabled=false;
+}
+};
+
 function downloadUpdateApp(){
 if(!appUpdateInfo?.downloadUrl)return;
 try{
+let staged=!!window.AndroidNotifications?.supportsStagedInAppUpdate?.();
+if(staged&&appUpdateDownloadState==="ready"&&typeof window.AndroidNotifications.installDownloadedUpdate==="function"){
+$("update-now-btn").disabled=true;
+$("update-now-btn").innerText="MEMBUKA INSTALLER...";
+window.AndroidNotifications.installDownloadedUpdate();
+return;
+}
+if(staged&&typeof window.AndroidNotifications.downloadAndInstallUpdate==="function"){
+appUpdateDownloadState="downloading";
+$("update-download-progress").classList.remove("hidden");
+$("update-progress-label").innerText="MEMULAI DOWNLOAD...";
+$("update-progress-fill").style.width="0%";
+$("update-progress-percent").innerText="0%";
+$("update-now-btn").innerText="MENGUNDUH 0%";
+$("update-now-btn").disabled=true;
+$("update-later-btn").disabled=true;
+window.AndroidNotifications.downloadAndInstallUpdate(appUpdateInfo.downloadUrl,appUpdateInfo.latestVersion);
+return;
+}
 if(window.AndroidNotifications?.supportsInAppUpdate?.()&&typeof window.AndroidNotifications.downloadAndInstallUpdate==="function"){
 window.AndroidNotifications.downloadAndInstallUpdate(appUpdateInfo.downloadUrl,appUpdateInfo.latestVersion);
 $("app-update-modal").classList.add("hidden");
-info("Update sedang diunduh langsung di aplikasi. Setelah selesai, Android akan meminta konfirmasi pemasangan.");
+info("Versi ini sedang berpindah ke updater baru. Setelah update ini terpasang, versi berikutnya akan menampilkan progress download dan tombol INSTAL UPDATE.");
 return;
 }
 }catch{}
 $("app-update-modal").classList.add("hidden");
-info("Versi APK ini belum mendukung download update di dalam aplikasi. Install Student Planner v2.2.3 atau lebih baru satu kali, lalu update berikutnya akan berlangsung langsung dari aplikasi.");
+info("Versi APK ini belum mendukung update langsung di aplikasi.");
 }
 
 /* AUTH */
