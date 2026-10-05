@@ -1,0 +1,19 @@
+{
+  "name": "Student Planner v2",
+  "short_name": "Planner",
+  "description": "Student planner untuk jadwal kuliah, tugas, keuangan, tabungan, dan profil mahasiswa.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f0e6",
+  "theme_color": "#fde047",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
