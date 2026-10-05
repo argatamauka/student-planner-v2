@@ -1,5 +1,5 @@
-const CACHE="student-planner-v2-pwa-14";
-const ASSETS=["/","/index.html","/style.css","/script.js","/supabase-config.js","/matakuliah.html","/matakuliah.css","/matakuliah.js","/profil.html","/profil.css","/profil.js","/manifest.webmanifest","/app-icon.svg","/pwa.js"];
+const CACHE="student-planner-v2-pwa-15";
+const ASSETS=["/","/index.html","/style.css","/script.js","/supabase-config.js","/offline.js","/matakuliah.html","/matakuliah.css","/matakuliah.js","/profil.html","/profil.css","/profil.js","/manifest.webmanifest","/app-icon.svg","/pwa.js"];
 
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)));
@@ -16,6 +16,7 @@ self.addEventListener("fetch",event=>{
   if(req.method!=="GET")return;
   const url=new URL(req.url);
   if(url.origin!==self.location.origin)return;
+  if(url.pathname.startsWith("/__offline__/"))return;
   event.respondWith(
     fetch(req).then(res=>{
       const copy=res.clone();
