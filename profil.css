@@ -72,3 +72,24 @@ body{padding:12px}
 .identity h2{font-size:1.05rem}.identity p{font-size:10px}
 .data-card{padding:13px}
 }
+
+/* DELETE ACCOUNT */
+.danger-card{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px;margin:22px 0 18px;border:4px solid #000;border-radius:12px;background:#ffb4b4;box-shadow:5px 5px 0 #000}
+.danger-card h2{margin:3px 0 6px;font-size:1.1rem}
+.danger-card p{max-width:620px;margin:0;font-size:11px;font-weight:700;line-height:1.45}
+.delete-account-btn{width:auto;min-width:120px;padding:9px 12px;border:3px solid #000;border-radius:7px;background:#ff4d4d;color:#000;box-shadow:3px 3px 0 #000;font:inherit;font-size:10px;font-weight:700;cursor:pointer}
+.delete-account-btn:active{transform:translate(3px,3px);box-shadow:none}
+.delete-account-modal-card{background:#fff;text-align:left}
+.danger-badge{display:inline-block;margin-bottom:10px;padding:4px 7px;border:2px solid #000;border-radius:999px;background:#ff4d4d;font-size:9px;font-weight:700;letter-spacing:.06em}
+.delete-account-modal-card p{font-size:11px;font-weight:600;line-height:1.45}
+.delete-account-modal-card label{display:block;margin:10px 0 4px;font-size:9px;font-weight:700;letter-spacing:.05em}
+.delete-account-modal-card input{width:100%;padding:9px;border:3px solid #000;border-radius:7px;background:#fff;font:inherit;font-size:12px;font-weight:700}
+.delete-modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.delete-account-modal-card .modal-cancel{background:#fff;color:#000}
+.delete-account-modal-card .modal-delete{background:#ff4d4d;color:#000}
+.delete-account-modal-card button:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:3px 3px 0 #000}
+
+@media(max-width:520px){
+.danger-card{align-items:stretch;flex-direction:column}
+.delete-account-btn{width:100%}
+}
