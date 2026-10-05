@@ -221,8 +221,15 @@
 <span>VERSI KAMU <strong id="update-current-version">-</strong></span>
 <span>TERBARU <strong id="update-latest-version">-</strong></span>
 </div>
+<div id="update-download-progress" class="update-download-progress hidden">
+<div class="update-progress-head">
+<strong id="update-progress-label">MENYIAPKAN DOWNLOAD...</strong>
+<span id="update-progress-percent">0%</span>
+</div>
+<div class="update-progress-track"><div id="update-progress-fill"></div></div>
+</div>
 <div class="actions">
-<button class="white" onclick="tundaUpdateApp()">NANTI</button>
+<button id="update-later-btn" class="white" onclick="tundaUpdateApp()">NANTI</button>
 <button id="update-now-btn" class="dark" onclick="downloadUpdateApp()">UPDATE SEKARANG</button>
 </div>
 <p class="update-help">Kalau Android menolak update karena bentrok, uninstall versi lama satu kali lalu install versi terbaru. Data akun yang sudah tersimpan di cloud tetap ada.</p>
