@@ -2,11 +2,18 @@ package com.argatamauka.studentplanner;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.content.Intent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.Settings;
+import android.widget.Toast;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
@@ -15,6 +22,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import java.io.File;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -23,9 +31,13 @@ public class MainActivity extends Activity {
     private static final String APP_URL = "https://studentplannerarga.vercel.app/";
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private static final int NOTIFICATION_PERMISSION_REQUEST = 1002;
+    private static final String UPDATE_PREFS = "student_planner_updates";
+    private static final String UPDATE_DOWNLOAD_ID = "download_id";
 
     private WebView webView;
     private ValueCallback<Uri[]> fileCallback;
+    private BroadcastReceiver updateDownloadReceiver;
+    private boolean updateSettingsRequested = false;
 
     private final Set<String> appHosts = new HashSet<>(Arrays.asList(
         "studentplannerarga.vercel.app",
@@ -38,6 +50,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         ReminderScheduler.createNotificationChannels(this);
+        registerUpdateReceiver();
 
         webView = new WebView(this);
         setContentView(webView);
@@ -53,7 +66,7 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.2.2");
+        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.2.3");
 
         webView.addJavascriptInterface(new NotificationBridge(), "AndroidNotifications");
 
@@ -118,6 +131,16 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public boolean supportsInAppUpdate() {
+            return true;
+        }
+
+        @JavascriptInterface
+        public void downloadAndInstallUpdate(String url, String version) {
+            runOnUiThread(() -> beginUpdateDownload(url, version));
+        }
+
+        @JavascriptInterface
         public boolean hasPermission() {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true;
             return checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
@@ -143,6 +166,130 @@ public class MainActivity extends Activity {
         public void clearReminders() {
             ReminderScheduler.clear(MainActivity.this);
         }
+    }
+
+
+    private void registerUpdateReceiver() {
+        updateDownloadReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if (!DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(intent.getAction())) return;
+                long completedId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                long expectedId = getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE)
+                    .getLong(UPDATE_DOWNLOAD_ID, -1);
+                if (completedId == expectedId && completedId != -1) {
+                    checkPendingUpdateDownload();
+                }
+            }
+        };
+
+        IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(updateDownloadReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(updateDownloadReceiver, filter);
+        }
+    }
+
+    private void beginUpdateDownload(String url, String version) {
+        try {
+            Uri uri = Uri.parse(url);
+            if (!"https".equalsIgnoreCase(uri.getScheme()) || !"github.com".equalsIgnoreCase(uri.getHost())) {
+                Toast.makeText(this, "Link update tidak valid.", Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            String safeVersion = String.valueOf(version).replaceAll("[^0-9A-Za-z._-]", "");
+            File dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+            if (dir == null) {
+                Toast.makeText(this, "Penyimpanan tidak tersedia.", Toast.LENGTH_LONG).show();
+                return;
+            }
+
+            File apk = new File(dir, "Student-Planner-" + safeVersion + ".apk");
+            if (apk.exists()) apk.delete();
+
+            DownloadManager.Request request = new DownloadManager.Request(uri)
+                .setTitle("Student Planner v" + safeVersion)
+                .setDescription("Mengunduh pembaruan aplikasi...")
+                .setMimeType("application/vnd.android.package-archive")
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                .setAllowedOverMetered(true)
+                .setAllowedOverRoaming(false)
+                .setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, apk.getName());
+
+            DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+            if (manager == null) throw new IllegalStateException("Download Manager tidak tersedia.");
+
+            long id = manager.enqueue(request);
+            getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE)
+                .edit()
+                .putLong(UPDATE_DOWNLOAD_ID, id)
+                .apply();
+
+            Toast.makeText(this, "Update sedang diunduh di dalam aplikasi.", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Gagal mengunduh update.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void checkPendingUpdateDownload() {
+        long id = getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE).getLong(UPDATE_DOWNLOAD_ID, -1);
+        if (id == -1) return;
+
+        DownloadManager manager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        if (manager == null) return;
+
+        DownloadManager.Query query = new DownloadManager.Query().setFilterById(id);
+        try (android.database.Cursor cursor = manager.query(query)) {
+            if (cursor == null || !cursor.moveToFirst()) return;
+
+            int statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
+            if (statusIndex < 0) return;
+            int status = cursor.getInt(statusIndex);
+
+            if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                Uri apkUri = manager.getUriForDownloadedFile(id);
+                if (apkUri != null) installDownloadedUpdate(id, apkUri);
+            } else if (status == DownloadManager.STATUS_FAILED) {
+                getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE).edit().remove(UPDATE_DOWNLOAD_ID).apply();
+                Toast.makeText(this, "Download update gagal. Coba lagi.", Toast.LENGTH_LONG).show();
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void installDownloadedUpdate(long id, Uri apkUri) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            !getPackageManager().canRequestPackageInstalls()) {
+            if (!updateSettingsRequested) {
+                updateSettingsRequested = true;
+                Toast.makeText(this, "Izinkan Student Planner memasang update satu kali.", Toast.LENGTH_LONG).show();
+                Intent settingsIntent = new Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + getPackageName())
+                );
+                startActivity(settingsIntent);
+            }
+            return;
+        }
+
+        getSharedPreferences(UPDATE_PREFS, MODE_PRIVATE).edit().remove(UPDATE_DOWNLOAD_ID).apply();
+        updateSettingsRequested = false;
+
+        Intent install = new Intent(Intent.ACTION_VIEW);
+        install.setDataAndType(apkUri, "application/vnd.android.package-archive");
+        install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(install);
+        } catch (Exception e) {
+            Toast.makeText(this, "Tidak bisa membuka pemasang update.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        checkPendingUpdateDownload();
     }
 
     @Override
@@ -178,6 +325,9 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (updateDownloadReceiver != null) {
+            try { unregisterReceiver(updateDownloadReceiver); } catch (Exception ignored) {}
+        }
         if (webView != null) {
             webView.stopLoading();
             webView.destroy();
