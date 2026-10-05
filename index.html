@@ -23,9 +23,9 @@
 <h1>MASUK KE<br>PLANNER-MU</h1>
 <p class="muted">Kuliah, tugas, uang, dan tabungan dalam satu tempat.</p>
 <label>EMAIL</label>
-<input id="email" type="email" placeholder="Email">
+<input id="email" type="email" autocomplete="email" inputmode="email" placeholder="Email">
 <label>PASSWORD</label>
-<input id="password" type="password" placeholder="********">
+<input id="password" type="password" autocomplete="current-password" placeholder="********">
 <div class="actions">
 <button id="login-btn" class="dark" onclick="login()">MASUK</button>
 <button id="register-btn" class="white" onclick="daftar()">DAFTAR</button>
@@ -206,6 +206,7 @@
 <div class="app-footer-tools">
 <p class="app-version">STUDENT PLANNER v2 • CLOUD SYNC</p>
 <button class="check-update-btn" onclick="manualCheckAppUpdate()">CEK UPDATE</button>
+<button class="check-update-btn feedback-btn" onclick="laporkanBug()">LAPORKAN BUG</button>
 </div>
 <button class="logout" onclick="konfirmasiLogout()">LOGOUT</button>
 </main>
@@ -253,7 +254,7 @@
 <div class="card modal-card recovery-card">
 <span class="badge">RESET PASSWORD</span>
 <h2>BUAT PASSWORD BARU</h2>
-<p class="muted">Gunakan minimal 6 karakter.</p>
+<p class="muted">Gunakan minimal 8 karakter.</p>
 <input id="new-password" type="password" autocomplete="new-password" placeholder="Password baru">
 <input id="confirm-new-password" type="password" autocomplete="new-password" placeholder="Ulangi password baru">
 <button class="dark" onclick="simpanPasswordBaru()">SIMPAN PASSWORD</button>
