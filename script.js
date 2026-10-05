@@ -109,11 +109,11 @@ $("dashboard-screen").classList.add("hidden");
 $("login-screen").classList.remove("hidden");
 }
 function konfirmasiLogout(){confirmBox("Yakin ingin keluar dari Student Planner?",logout,"LOGOUT")}
-async function logout(){if(rt)await sb.removeChannel(rt);await sb.auth.signOut();$("dashboard-screen").classList.add("hidden");$("login-screen").classList.remove("hidden");$("email").value=$("password").value="";scrollTo(0,0)}
+async function logout(){if(rt)await sb.removeChannel(rt);try{window.AndroidNotifications?.clearReminders()}catch{}await sb.auth.signOut();$("dashboard-screen").classList.add("hidden");$("login-screen").classList.remove("hidden");$("email").value=$("password").value="";scrollTo(0,0)}
 async function bukaDashboard(){
 $("login-screen").classList.add("hidden");$("dashboard-screen").classList.remove("hidden");
 setLoading(true,"MENYIAPKAN PLANNER...");
-try{await migrasiLokal();await Promise.all([loadDashboard(),loadIdentitas()]);pasangRealtime();scrollTo(0,0)}
+try{await migrasiLokal();await Promise.all([loadDashboard(),loadIdentitas()]);pasangRealtime();setTimeout(offerNotificationIntro,350);scrollTo(0,0)}
 catch(e){info("Gagal memuat data: "+e.message)}
 finally{setLoading(false)}
 }
@@ -145,7 +145,45 @@ if(d.targetNama||d.targetNominal||d.tabungan)await q(sb.from("savings").upsert({
 localStorage.setItem("studentPlannerCloudMigrated","1");
 }
 
-async function loadDashboard(){await Promise.all([loadJadwal(),loadTugas(),loadFinance()]);renderSemua()}
+function notificationPrefs(){
+if(!user)return{enabled:false};
+try{return{enabled:false,schedule:true,scheduleMinutes:30,tasks:true,taskDays:1,taskHour:19,...JSON.parse(localStorage.getItem("studentPlannerNotificationPrefs:"+user.id)||"{}")}}catch{return{enabled:false}}
+}
+function buildReminderPayload(p){
+let parsedSchedules=jadwal.map(x=>{
+let m=String(x.waktu||"").match(/(\d{1,2}):(\d{2})/);
+if(!m)return null;
+return{id:x.id,day:x.hari,course:x.matkul,room:x.ruangan||"",time:x.waktu,hour:Number(m[1]),minute:Number(m[2])};
+}).filter(Boolean);
+return{
+userId:user.id,
+scheduleEnabled:!!p.schedule,
+scheduleMinutes:Number(p.scheduleMinutes||30),
+taskEnabled:!!p.tasks,
+taskDays:Number(p.taskDays||1),
+taskHour:Number(p.taskHour??19),
+schedules:parsedSchedules,
+tasks:tugas.filter(x=>!x.selesai).map(x=>({id:x.id,name:x.nama,course:x.matkul,deadline:x.deadline}))
+};
+}
+function syncAndroidReminders(){
+try{
+let p=notificationPrefs();
+if(window.AndroidNotifications&&p.enabled){
+window.AndroidNotifications.syncReminders(JSON.stringify(buildReminderPayload(p)));
+}
+}catch{}
+}
+function offerNotificationIntro(){
+try{
+if(!window.AndroidNotifications||!user)return;
+let key="studentPlannerNotificationIntro:"+user.id;
+if(localStorage.getItem(key))return;
+localStorage.setItem(key,"1");
+if(!notificationPrefs().enabled)info("🔔 Pengingat jadwal dan deadline sudah tersedia. Aktifkan dari menu PROFIL.");
+}catch{}
+}
+async function loadDashboard(){await Promise.all([loadJadwal(),loadTugas(),loadFinance()]);renderSemua();syncAndroidReminders()}
 async function loadJadwal(){
 let d=await q(sb.from("schedules").select("*"));
 jadwal=d.map(x=>({id:x.id,hari:x.day,matkul:x.course_name,waktu:x.time_range,ruangan:x.room||""}));
@@ -195,10 +233,10 @@ if(!hari||!matkul||!waktu)return info("Isi hari, mata kuliah, dan waktu terlebih
 try{
 let d={day:hari,course_name:matkul,time_range:waktu,room:ruangan||null};
 editJadwal===null?await q(sb.from("schedules").insert({...d,user_id:user.id})):await q(sb.from("schedules").update(d).eq("id",jadwal[editJadwal].id));
-resetFormJadwal();$("form-jadwal").classList.add("hidden");await loadJadwal();renderJadwal();
+resetFormJadwal();$("form-jadwal").classList.add("hidden");await loadJadwal();renderJadwal();syncAndroidReminders();
 }catch(e){info(e.message)}
 }
-function hapusJadwal(i){confirmBox(`Hapus jadwal ${jadwal[i].matkul}?`,async()=>{try{await q(sb.from("schedules").delete().eq("id",jadwal[i].id));batalEditJadwal();await loadJadwal();renderJadwal()}catch(e){info(e.message)}},"HAPUS")}
+function hapusJadwal(i){confirmBox(`Hapus jadwal ${jadwal[i].matkul}?`,async()=>{try{await q(sb.from("schedules").delete().eq("id",jadwal[i].id));batalEditJadwal();await loadJadwal();renderJadwal();syncAndroidReminders()}catch(e){info(e.message)}},"HAPUS")}
 
 /* TUGAS */
 function statusDeadline(t){
@@ -224,11 +262,11 @@ if(!nama||!matkul||!deadline)return info("Isi nama tugas, mata kuliah, dan deadl
 try{
 let d={name:nama,course_name:matkul,deadline};
 editTugas===null?await q(sb.from("tasks").insert({...d,user_id:user.id,completed:false})):await q(sb.from("tasks").update(d).eq("id",tugas[editTugas].id));
-resetFormTugas();$("form-tugas").classList.add("hidden");await loadTugas();renderTugas();
+resetFormTugas();$("form-tugas").classList.add("hidden");await loadTugas();renderTugas();syncAndroidReminders();
 }catch(e){info(e.message)}
 }
-async function toggleTugas(i){try{await q(sb.from("tasks").update({completed:!tugas[i].selesai}).eq("id",tugas[i].id));await loadTugas();renderTugas()}catch(e){info(e.message)}}
-function hapusTugas(i){confirmBox(`Hapus tugas ${tugas[i].nama}?`,async()=>{try{await q(sb.from("tasks").delete().eq("id",tugas[i].id));batalEditTugas();await loadTugas();renderTugas()}catch(e){info(e.message)}},"HAPUS")}
+async function toggleTugas(i){try{await q(sb.from("tasks").update({completed:!tugas[i].selesai}).eq("id",tugas[i].id));await loadTugas();renderTugas();syncAndroidReminders()}catch(e){info(e.message)}}
+function hapusTugas(i){confirmBox(`Hapus tugas ${tugas[i].nama}?`,async()=>{try{await q(sb.from("tasks").delete().eq("id",tugas[i].id));batalEditTugas();await loadTugas();renderTugas();syncAndroidReminders()}catch(e){info(e.message)}},"HAPUS")}
 
 /* DOMPET */
 const walletAktif=()=>wallets.find(x=>x.id===dompetAktifId);
