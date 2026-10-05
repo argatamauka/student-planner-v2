@@ -117,6 +117,15 @@ async function manualCheckAppUpdate(){
 setLoading(true,"MEMERIKSA UPDATE...");
 try{await checkAppUpdate(true)}finally{setLoading(false)}
 }
+function bukaTentangApp(){
+try{
+if(window.AndroidNotifications&&typeof window.AndroidNotifications.openAboutApp==="function"){
+window.AndroidNotifications.openAboutApp();
+return;
+}
+}catch{}
+location.href="profil.html";
+}
 function laporkanBug(){
 let version=installedAndroidVersion()||"WEB";
 let subject=encodeURIComponent("Bug Student Planner v"+version);
