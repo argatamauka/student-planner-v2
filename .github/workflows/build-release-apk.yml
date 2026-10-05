@@ -9,7 +9,7 @@ on:
       - "android/app/build.gradle"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   release:
@@ -74,17 +74,35 @@ jobs:
           test -f android/app/build/outputs/apk/release/app-release.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs android/app/build/outputs/apk/release/app-release.apk
 
-      - name: Rename APK
+      - name: Prepare release files
+        id: release
         run: |
-          cp android/app/build/outputs/apk/release/app-release.apk Student-Planner-v2-release.apk
-          sha256sum Student-Planner-v2-release.apk > Student-Planner-v2-release.apk.sha256
+          VERSION=$(grep -oP 'versionName "\\K[^"]+' android/app/build.gradle)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          cp android/app/build/outputs/apk/release/app-release.apk Student-Planner-v2.apk
+          sha256sum Student-Planner-v2.apk > Student-Planner-v2.apk.sha256
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.release.outputs.tag }}"
+          VERSION="${{ steps.release.outputs.version }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" Student-Planner-v2.apk Student-Planner-v2.apk.sha256 --clobber
+          else
+            gh release create "$TAG" Student-Planner-v2.apk Student-Planner-v2.apk.sha256 \
+              --title "Student Planner v$VERSION" \
+              --notes "Signed Android release Student Planner v$VERSION."
+          fi
 
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
           name: Student-Planner-v2-Signed-Release
           path: |
-            Student-Planner-v2-release.apk
-            Student-Planner-v2-release.apk.sha256
+            Student-Planner-v2.apk
+            Student-Planner-v2.apk.sha256
           if-no-files-found: error
           retention-days: 90
