@@ -154,3 +154,8 @@ body:has(#login-screen:not(.hidden)){padding:12px}
 #tugas-ringkas{height:195px}#daftar-riwayat{max-height:190px}
 .edit-small{min-width:38px;padding:3px 4px;font-size:8px}
 }
+
+/* PWA INSTALL */
+.install-app{margin-top:10px;background:var(--yellow)}
+.app-install-main{display:block;max-width:220px;margin:20px auto 0}
+@media(display-mode:standalone){.install-app{display:none!important}}
