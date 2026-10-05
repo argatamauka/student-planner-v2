@@ -117,6 +117,12 @@ async function manualCheckAppUpdate(){
 setLoading(true,"MEMERIKSA UPDATE...");
 try{await checkAppUpdate(true)}finally{setLoading(false)}
 }
+function laporkanBug(){
+let version=installedAndroidVersion()||"WEB";
+let subject=encodeURIComponent("Bug Student Planner v"+version);
+let body=encodeURIComponent("Jelaskan masalah yang terjadi:\n\nLangkah sebelum masalah muncul:\n1. \n2. \n3. \n\nVersi aplikasi: "+version+"\nBrowser/Perangkat: "+navigator.userAgent);
+location.href="mailto:argatamauka@gmail.com?subject="+subject+"&body="+body;
+}
 function tundaUpdateApp(){
 if(appUpdateInfo)localStorage.setItem("studentPlannerUpdateSnooze:"+appUpdateInfo.latestVersion,String(Date.now()));
 $("app-update-modal").classList.add("hidden");
@@ -192,7 +198,7 @@ user=data.user;await bukaDashboard();
 }
 async function daftar(){
 let email=$("email").value.trim(),password=$("password").value;
-if(!email||password.length<6)return info("Isi email dan password minimal 6 karakter.");
+if(!email||password.length<8)return info("Isi email dan password minimal 8 karakter.");
 setAuthButtons(true);setLoading(true,"MEMBUAT AKUN...");
 try{
 let{data,error}=await sb.auth.signUp({email,password});
@@ -222,7 +228,7 @@ info("Link reset password sudah dikirim. Cek inbox atau folder spam emailmu.");
 }
 async function simpanPasswordBaru(){
 let a=$("new-password").value,b=$("confirm-new-password").value;
-if(a.length<6)return info("Password baru minimal 6 karakter.");
+if(a.length<8)return info("Password baru minimal 8 karakter.");
 if(a!==b)return info("Konfirmasi password belum sama.");
 setLoading(true,"MENYIMPAN PASSWORD...");
 try{
@@ -492,4 +498,7 @@ $("login-screen").classList.add("hidden");
 });
 function renderSemua(){renderJadwal();renderTugas();renderDompet();renderTransaksi();renderTabungan()}
 (async()=>{checkAppUpdate();let{data:{session}}=await sb.auth.getSession();if(session&&!recoveryMode){user=session.user;await bukaDashboard()}})();
-document.addEventListener("keydown",e=>{if(e.key==="Escape"){tutupConfirm();$("info-modal").classList.add("hidden")}});
+document.addEventListener("keydown",e=>{
+if(e.key==="Escape"){tutupConfirm();$("info-modal").classList.add("hidden")}
+if(e.key==="Enter"&&!$("login-screen").classList.contains("hidden")&&["email","password"].includes(document.activeElement?.id))login();
+});
