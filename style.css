@@ -1,6 +1,6 @@
 :root{--bg:#f4f0e6;--black:#000;--white:#fff;--blue:#60a5fa;--green:#4ade80;--orange:#f97316;--pink:#f472b6;--yellow:#fde047}
 *{box-sizing:border-box}html{scroll-behavior:smooth}
-body{margin:0;padding:18px;background:var(--bg);color:#000;font-family:"Space Grotesk",sans-serif}
+body{margin:0;padding:calc(18px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left));background:var(--bg);color:#000;font-family:"Space Grotesk",sans-serif}
 body:has(#login-screen:not(.hidden)){min-height:100vh;display:grid;place-items:center}
 .container{width:100%;max-width:980px;margin:auto}.hidden{display:none!important}
 h1,h2,h3,p{margin-top:0}h1,h2,h3{text-transform:uppercase}
@@ -141,7 +141,7 @@ small{font-size:10px;font-weight:700;letter-spacing:.08em}
 
 /* DESKTOP */
 @media(min-width:760px){
-body{padding:28px}
+body{padding:calc(28px + env(safe-area-inset-top)) calc(28px + env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) calc(28px + env(safe-area-inset-left))}
 body:has(#login-screen:not(.hidden)){padding:28px}
 .dashboard-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
 .card{padding:16px}.profile{padding:13px 16px}.summary{max-width:420px}
@@ -150,7 +150,7 @@ body:has(#login-screen:not(.hidden)){padding:28px}
 
 /* HP KECIL */
 @media(max-width:380px){
-body{padding:12px}
+body{padding:calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left))}
 body:has(#login-screen:not(.hidden)){padding:12px}
 .card{padding:14px}.login-card h1{font-size:2rem}
 .actions{gap:6px}button,input,select{padding:9px;font-size:13px}
@@ -209,3 +209,13 @@ body:has(#login-screen:not(.hidden)){padding:12px}
 .update-progress-track{height:18px;overflow:hidden;border:3px solid #000;border-radius:999px;background:#fff}
 #update-progress-fill{width:0;height:100%;background:#000;transition:width .2s ease}
 #update-now-btn:disabled,#update-later-btn:disabled{cursor:not-allowed;opacity:.6;transform:none;box-shadow:3px 3px 0 #000}
+
+
+/* UX POLISH */
+button,a,input,select,textarea{touch-action:manipulation}
+button:disabled{opacity:.55;cursor:not-allowed;transform:none!important}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #000;outline-offset:3px}
+.modal-card{max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain}
+.feedback-btn{background:var(--pink)}
+@media(max-width:759px){input,select,textarea{font-size:16px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
