@@ -2,10 +2,12 @@ const $=id=>document.getElementById(id),aman=t=>String(t??"").replaceAll("&","&a
 let user=null,editIndex=null,hapusIndex=null,matkul=[],rt=null;
 async function q(p){let{data,error}=await p;if(error)throw error;return data}
 async function migrasi(){
+if(localStorage.getItem("studentPlannerMatkulCloudMigrated")==="1")return;
 let old=localStorage.getItem("studentPlannerMatkulV1");if(!old)return;
-let ada=await q(sb.from("courses").select("id").limit(1));if(ada.length)return;
+let ada=await q(sb.from("courses").select("id").limit(1));if(ada.length){localStorage.setItem("studentPlannerMatkulCloudMigrated","1");return;}
 let d;try{d=JSON.parse(old)}catch{return}
 if(Array.isArray(d)&&d.length)await q(sb.from("courses").insert(d.map(x=>({user_id:user.id,name:x.nama,day:x.hari,time_range:x.waktu,room:x.ruangan||null}))));
+localStorage.setItem("studentPlannerMatkulCloudMigrated","1");
 }
 async function load(){let d=await q(sb.from("courses").select("*").order("created_at"));matkul=d.map(x=>({id:x.id,nama:x.name,hari:x.day,waktu:x.time_range,ruangan:x.room||""}));render()}
 function render(){
