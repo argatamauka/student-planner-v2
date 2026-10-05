@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Profil Mahasiswa - Student Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="profil.css">
+</head>
+<body>
+
+<div class="container">
+
+<header class="header">
+<a href="index.html" class="back">←</a>
+<div><small>STUDENT PLANNER</small><h1>PROFIL MAHASISWA</h1></div>
+<button id="edit-btn" class="edit" onclick="mulaiEdit()">EDIT</button>
+</header>
+
+<section class="profile-card">
+<div class="photo-area">
+<div id="foto-placeholder" class="photo-placeholder">A</div>
+<img id="foto-preview" class="photo hidden" alt="Foto profil">
+<label for="foto-input" class="photo-btn">PILIH FOTO</label>
+<input id="foto-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+</div>
+<div class="identity">
+<small>MAHASISWA</small>
+<h2 id="nama-header">NAMA MAHASISWA</h2>
+<p id="nim-header">NIM</p>
+<div class="status"><span id="status-header">ACTIVE</span><span id="prodi-header">PROGRAM STUDI</span></div>
+</div>
+</section>
+
+<section class="data-card">
+<div class="section-title"><small>DATA KAMPUS</small><h2>INFORMASI MAHASISWA</h2></div>
+<div class="data-grid">
+<label><span>Registration Number / NIM</span><input class="profile-input" data-field="nim" disabled></label>
+<label><span>Name</span><input class="profile-input" data-field="name" disabled></label>
+<label><span>Program</span><input class="profile-input" data-field="program" disabled></label>
+<label><span>Name in IJAZAH</span><input class="profile-input" data-field="ijazah_name" disabled></label>
+<label><span>Financial Number</span><input class="profile-input" data-field="financial_number" disabled></label>
+<label><span>Gender</span><input class="profile-input" data-field="gender" disabled></label>
+<label class="wide"><span>Place / Date of Birth</span><textarea class="profile-input" data-field="birth_place_date" disabled></textarea></label>
+<label><span>Academic Status / Curriculum Block</span><input class="profile-input" data-field="academic_status" disabled></label>
+<label><span>Religion</span><input class="profile-input" data-field="religion" disabled></label>
+<label><span>Residence</span><input class="profile-input" data-field="residence" disabled></label>
+<label><span>Marital Status</span><input class="profile-input" data-field="marital_status" disabled></label>
+<label><span>Faculty</span><input class="profile-input" data-field="faculty" disabled></label>
+<label><span>Program Study / Minor</span><input class="profile-input" data-field="study_program" disabled></label>
+<label><span>Curriculum Name</span><input class="profile-input" data-field="curriculum_name" disabled></label>
+<label><span>Academic Probation</span><input class="profile-input" data-field="academic_probation" disabled></label>
+<label><span>Race</span><input class="profile-input" data-field="race" disabled></label>
+<label class="wide"><span>Address</span><textarea class="profile-input" data-field="address" disabled></textarea></label>
+</div>
+</section>
+
+<section class="data-card family mother">
+<div class="section-title"><small>KELUARGA</small><h2>MY MOTHER</h2></div>
+<div class="data-grid">
+<label><span>Name</span><input class="profile-input" data-field="mother_name" disabled></label>
+<label><span>Phone</span><input class="profile-input" data-field="mother_phone" disabled></label>
+<label class="wide"><span>Address</span><textarea class="profile-input" data-field="mother_address" disabled></textarea></label>
+</div>
+</section>
+
+<section class="data-card family father">
+<div class="section-title"><small>KELUARGA</small><h2>MY FATHER</h2></div>
+<div class="data-grid">
+<label><span>Name</span><input class="profile-input" data-field="father_name" disabled></label>
+<label><span>Phone</span><input class="profile-input" data-field="father_phone" disabled></label>
+<label class="wide"><span>Address</span><textarea class="profile-input" data-field="father_address" disabled></textarea></label>
+</div>
+</section>
+
+<section class="data-card family guardian">
+<div class="section-title"><small>KELUARGA</small><h2>MY GUARDIAN</h2></div>
+<div class="data-grid">
+<label><span>Name</span><input class="profile-input" data-field="guardian_name" disabled></label>
+<label><span>Phone</span><input class="profile-input" data-field="guardian_phone" disabled></label>
+<label class="wide"><span>Address</span><textarea class="profile-input" data-field="guardian_address" disabled></textarea></label>
+</div>
+</section>
+
+<div id="edit-actions" class="edit-actions hidden">
+<button class="cancel" onclick="batalEdit()">BATAL</button>
+<button class="save" onclick="simpanProfil()">SIMPAN PERUBAHAN</button>
+</div>
+
+</div>
+
+<div id="saved-modal" class="modal hidden">
+<div class="modal-card">
+<h3 id="modal-message">Profil berhasil diperbarui.</h3>
+<button onclick="tutupModal()">OK</button>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="profil.js"></script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+:root{--bg:#f4f0e6;--black:#000;--white:#fff;--blue:#60a5fa;--green:#4ade80;--orange:#f97316;--pink:#f472b6;--yellow:#fde047}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;padding:18px;background:var(--bg);color:#000;font-family:"Space Grotesk",sans-serif}
+body:has(#login-screen:not(.hidden)){min-height:100vh;display:grid;place-items:center}
+.container{width:100%;max-width:980px;margin:auto}.hidden{display:none!important}
+h1,h2,h3,p{margin-top:0}h1,h2,h3{text-transform:uppercase}
+
+.card{padding:18px;border:4px solid #000;border-radius:12px;box-shadow:5px 5px 0 #000}
+.bg-green{background:var(--green)}.bg-blue{background:var(--blue)}.bg-pink{background:var(--pink)}.bg-orange{background:var(--orange)}
+
+input,select,button{width:100%;padding:10px;border:3px solid #000;border-radius:7px;font:inherit;font-weight:700}
+input,select{margin-bottom:9px;background:#fff;color:#000}
+input:focus,select:focus{outline:0;box-shadow:0 0 0 3px #ffffff88}
+button{cursor:pointer;color:#000;box-shadow:3px 3px 0 #000;transition:.08s}
+button:active{transform:translate(3px,3px);box-shadow:none}
+.dark{background:#000;color:#fff}.white{background:#fff}.yellow{background:var(--yellow)}.pink{background:var(--pink)}
+
+small{font-size:10px;font-weight:700;letter-spacing:.08em}
+.muted{opacity:.65;font-size:13px;font-weight:600}.compact{margin:8px 0}
+.badge{display:inline-block;padding:4px 8px;border:2px solid #000;border-radius:999px;background:var(--yellow);font-size:10px;font-weight:700}
+.badge.white{background:#fff}
+
+/* LOGIN */
+.login-card{width:100%;max-width:420px;margin:0 auto;background:#fff}
+.login-card h1{margin:14px 0 8px;font-size:2.3rem;line-height:1}
+.login-card label{display:block;margin:10px 0 5px;font-size:11px;font-weight:700}
+
+/* PROFILE */
+.profile{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;background:#fff}
+.profile h1{margin:2px 0 0;font-size:1.55rem}
+.avatar{width:46px;height:46px;flex-shrink:0;display:grid;place-items:center;border:3px solid #000;border-radius:50%;background:var(--orange);font-weight:700}
+
+/* SUMMARY */
+.summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.mini{min-width:0;padding:12px;border:3px solid #000;border-radius:9px;background:#fff;box-shadow:3px 3px 0 #000}
+.mini strong{display:block;margin-top:2px;font-size:1.45rem}
+
+/* DASHBOARD */
+.dashboard-grid{display:grid;grid-template-columns:1fr;gap:18px}
+.card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding-bottom:10px;margin-bottom:12px;border-bottom:3px solid #000}
+.card-head h2{margin:2px 0 0;font-size:1.35rem}
+.mini-btn{width:auto;padding:6px 9px;margin:0;font-size:10px}
+
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.actions.one{grid-template-columns:1fr}.actions button{margin:0}
+.panel{margin-top:14px;padding-top:14px;border-top:2px dashed #000}
+.panel-label{display:block;margin-bottom:8px}
+.cancel-edit{margin-top:8px;background:#fff}
+
+/* MATA KULIAH */
+.course-link{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding:10px 12px;border:3px solid #000;border-radius:8px;background:var(--yellow);color:#000;text-decoration:none;box-shadow:3px 3px 0 #000;transition:.08s}
+.course-link div{min-width:0}
+.course-link small{display:block;margin-bottom:2px;font-size:8px;opacity:.6}
+.course-link strong{display:block;font-size:12px;letter-spacing:.03em}
+.course-link>span{width:28px;height:28px;flex:0 0 28px;display:grid;place-items:center;border:2px solid #000;border-radius:6px;background:#fff;font-size:17px;font-weight:700}
+.course-link:active{transform:translate(3px,3px);box-shadow:none}
+
+/* ITEM */
+.empty{padding:11px;border:2px dashed #000;border-radius:7px;background:#ffffff80;text-align:center;font-size:12px;font-weight:700}
+.item{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:9px 0;border-bottom:2px dashed #000}
+.item:last-child{border-bottom:0}
+.item-info{flex:1;min-width:0}
+.item-info strong{display:block;overflow-wrap:anywhere}
+.meta{margin-top:3px;font-size:11px;font-weight:700;opacity:.7}
+
+.item-actions{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.edit-small{width:auto;min-width:42px;padding:4px 6px;margin:0;background:#fff;font-size:9px;box-shadow:2px 2px 0 #000}
+.delete{width:29px;min-width:29px;padding:3px;margin:0;background:var(--pink);font-size:12px;box-shadow:2px 2px 0 #000}
+
+/* TUGAS */
+.task{display:flex;align-items:flex-start;gap:8px;min-height:64px}
+.task input{width:21px;min-width:21px;height:21px;padding:0;margin:1px 0 0;accent-color:#000}
+.task.done strong{text-decoration:line-through;opacity:.5}
+.task-tag{display:inline-block;margin-top:4px;padding:2px 5px;border:2px solid #000;border-radius:999px;background:#fff;font-size:9px;font-weight:700}
+.urgent{background:var(--pink)}.soon{background:var(--yellow)}.complete{background:var(--green)}
+
+#tugas-ringkas{height:200px;max-height:200px}
+#tugas-ringkas,#tugas-selesai-list,#daftar-riwayat{overflow-y:auto;overflow-x:hidden;padding-right:6px;scrollbar-gutter:stable;overscroll-behavior:contain;scrollbar-color:#000 #ffffff66}
+#tugas-selesai-list{max-height:200px}
+
+#tugas-ringkas::-webkit-scrollbar,#tugas-selesai-list::-webkit-scrollbar,#daftar-riwayat::-webkit-scrollbar{width:7px}
+#tugas-ringkas::-webkit-scrollbar-track,#tugas-selesai-list::-webkit-scrollbar-track,#daftar-riwayat::-webkit-scrollbar-track{background:#ffffff66;border:2px solid #000;border-radius:20px}
+#tugas-ringkas::-webkit-scrollbar-thumb,#tugas-selesai-list::-webkit-scrollbar-thumb,#daftar-riwayat::-webkit-scrollbar-thumb{background:#000;border-radius:20px}
+#tugas-ringkas:has(.empty){height:auto}
+
+/* JADWAL */
+#jadwal-lengkap{max-height:330px;overflow-y:auto;overflow-x:hidden;padding-right:5px;overscroll-behavior:contain}
+
+/* DOMPET */
+.wallet{padding:11px;margin-bottom:10px;border:3px solid #000;border-radius:8px;background:#fff}
+.wallet-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}
+.wallet-btn{width:auto;padding:4px 7px;margin:0;font-size:9px;box-shadow:2px 2px 0 #000}
+.delete-wallet{background:var(--pink)}
+.wallet select{width:100%;margin:0 0 7px;padding:7px;border-width:2px;font-size:12px}
+.wallet h2{margin:5px 0 0;font-size:1.65rem;overflow-wrap:anywhere}
+
+/* KEUANGAN */
+.finance-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.finance-summary>div{min-width:0;padding:9px;border:3px solid #000;border-radius:7px;background:#ffffffa8}
+.finance-summary strong{display:block;margin-top:3px;font-size:12px;overflow-wrap:anywhere}
+
+.transaction-wallet{display:inline-block;margin-bottom:9px;padding:4px 7px;border:2px solid #000;border-radius:999px;background:var(--yellow);font-size:9px;font-weight:700}
+
+/* FILTER TRANSAKSI */
+.transaction-filters{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.filter-btn{padding:6px 4px;background:#fff;font-size:9px;box-shadow:2px 2px 0 #000}
+.filter-btn.active{background:var(--yellow);transform:translate(2px,2px);box-shadow:none}
+
+#riwayat-container{overflow:hidden}
+#daftar-riwayat{max-height:195px}
+
+.history-row{min-height:62px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:2px dashed #000;font-size:11px;font-weight:700}
+.history-row:last-child{border-bottom:0}
+.history-info{flex:1;min-width:0}
+.history-info strong{display:block;overflow-wrap:anywhere}
+.history-info small{display:block;margin-top:3px;opacity:.6}
+
+.history-side{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0}
+.history-actions{display:flex;gap:5px}
+.history-actions .edit-small{min-width:38px;padding:3px 5px}
+.history-actions .delete{width:25px;min-width:25px;padding:2px}
+
+.amount{height:fit-content;white-space:nowrap;padding:3px 5px;border:2px solid #000;border-radius:5px;background:var(--yellow)}
+.amount.in{background:var(--green)}
+
+/* TABUNGAN */
+.saving-text{margin-bottom:8px;font-weight:700}
+.progress{width:100%;height:27px;overflow:hidden;border:3px solid #000;border-radius:7px;background:#fff}
+#progress-fill{width:0;height:100%;background:var(--yellow);transition:.25s}
+
+/* LOGOUT */
+.logout{margin-top:20px;background:#000;color:#fff}
+
+/* MODAL */
+.modal{position:fixed;inset:0;z-index:999;display:grid;place-items:center;padding:20px;background:#0009}
+.modal-card{width:min(330px,100%);margin:0;background:var(--yellow);text-align:center}
+.modal-card h3{text-transform:none;line-height:1.4}
+
+/* DESKTOP */
+@media(min-width:760px){
+body{padding:28px}
+body:has(#login-screen:not(.hidden)){padding:28px}
+.dashboard-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+.card{padding:16px}.profile{padding:13px 16px}.summary{max-width:420px}
+.logout{display:block;max-width:220px;margin:22px auto 0}
+}
+
+/* HP KECIL */
+@media(max-width:380px){
+body{padding:12px}
+body:has(#login-screen:not(.hidden)){padding:12px}
+.card{padding:14px}.login-card h1{font-size:2rem}
+.actions{gap:6px}button,input,select{padding:9px;font-size:13px}
+#tugas-ringkas{height:195px}#daftar-riwayat{max-height:190px}
+.edit-small{min-width:38px;padding:3px 4px;font-size:8px}
+}

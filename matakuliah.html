@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mata Kuliah - Student Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="matakuliah.css">
+</head>
+<body>
+
+<div class="container">
+
+<header class="header-card">
+<div>
+<small>STUDENT PLANNER</small>
+<h1>MATA KULIAH</h1>
+<p>Semua mata kuliah semester ini.</p>
+</div>
+<a href="index.html" class="back-btn">←</a>
+</header>
+
+<section class="summary">
+<div class="summary-card"><small>TOTAL MATA KULIAH</small><strong id="total-matkul">0</strong></div>
+<div class="summary-card"><small>HARI KULIAH</small><strong id="total-hari">0</strong></div>
+</section>
+
+<button class="add-btn" onclick="bukaForm()">+ TAMBAH MATA KULIAH</button>
+
+<section id="form-card" class="form-card hidden">
+<div class="form-head">
+<div><small id="form-label">MATA KULIAH BARU</small><h2 id="form-title">TAMBAH</h2></div>
+<button class="close-btn" onclick="tutupForm()">X</button>
+</div>
+
+<input id="nama" placeholder="Nama mata kuliah">
+<select id="hari">
+<option value="">Pilih hari</option>
+<option>Senin</option><option>Selasa</option><option>Rabu</option>
+<option>Kamis</option><option>Jumat</option>
+</select>
+<input id="waktu" placeholder="09:00 - 11:00">
+<input id="ruangan" placeholder="Ruangan">
+
+<div class="form-actions">
+<button class="cancel-btn" onclick="tutupForm()">BATAL</button>
+<button class="save-btn" onclick="simpanMatkul()">SIMPAN</button>
+</div>
+</section>
+
+<main id="course-grid" class="course-grid"></main>
+</div>
+
+<div id="modal" class="modal hidden">
+<div class="modal-card">
+<h3 id="modal-text">Hapus mata kuliah?</h3>
+<div class="modal-actions">
+<button onclick="tutupModal()">BATAL</button>
+<button class="danger" onclick="konfirmasiHapus()">HAPUS</button>
+</div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="matakuliah.js"></script>
+</body>
+</html>

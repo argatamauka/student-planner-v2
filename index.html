@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Student Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+
+<section id="login-screen" class="card login-card">
+<span class="badge">STUDENT PLANNER</span>
+<h1>MASUK KE<br>PLANNER-MU</h1>
+<p class="muted">Kuliah, tugas, uang, dan tabungan dalam satu tempat.</p>
+<label>EMAIL</label>
+<input id="email" type="email" placeholder="Email">
+<label>PASSWORD</label>
+<input id="password" type="password" placeholder="********">
+<div class="actions">
+<button class="dark" onclick="login()">MASUK</button>
+<button class="white" onclick="daftar()">DAFTAR</button>
+</div>
+</section>
+
+<main id="dashboard-screen" class="hidden">
+
+<header class="card profile">
+<div><small>STUDENT PLANNER</small><h1>HALO, ARGA!</h1></div>
+<a href="profil.html" aria-label="Buka profil" style="color:#000;text-decoration:none"><div class="avatar">A</div></a>
+</header>
+
+<div class="summary">
+<div class="mini"><small>KULIAH HARI INI</small><strong id="summary-jadwal">0</strong></div>
+<div class="mini"><small>TUGAS AKTIF</small><strong id="summary-tugas">0</strong></div>
+</div>
+
+<div class="dashboard-grid">
+
+<section class="card bg-green">
+<div class="card-head">
+<div><small>AKADEMIK</small><h2>Jadwal</h2></div>
+<span id="hari-sekarang" class="badge white">-</span>
+</div>
+
+<div id="jadwal-ringkas"></div>
+
+<div class="actions">
+<button class="white" onclick="bukaTambahJadwal()">+ JADWAL</button>
+<button class="white" onclick="toggle('jadwal-lengkap')">SEMUA</button>
+</div>
+
+<a href="matakuliah.html" class="course-link">
+<div><small>SEMESTER INI</small><strong>MATA KULIAH</strong></div>
+<span>→</span>
+</a>
+
+<div id="form-jadwal" class="panel hidden">
+<select id="input-hari">
+<option value="">Pilih hari</option>
+<option>Senin</option><option>Selasa</option><option>Rabu</option>
+<option>Kamis</option><option>Jumat</option>
+</select>
+<input id="input-matkul" placeholder="Nama mata kuliah">
+<input id="input-waktu" placeholder="09:00 - 11:00">
+<input id="input-ruangan" placeholder="Ruangan (opsional)">
+<button id="simpan-jadwal" class="dark" onclick="simpanJadwal()">SIMPAN</button>
+<button id="batal-edit-jadwal" class="cancel-edit hidden" onclick="batalEditJadwal()">BATAL EDIT</button>
+</div>
+
+<div id="jadwal-lengkap" class="panel hidden"></div>
+</section>
+
+<section class="card bg-blue">
+<div class="card-head">
+<div><small>PRIORITAS</small><h2>Tugas</h2></div>
+<span class="badge white"><span id="count-tugas">0</span> AKTIF</span>
+</div>
+
+<div id="tugas-ringkas"></div>
+
+<div class="actions">
+<button class="white" onclick="bukaTambahTugas()">+ TAMBAH</button>
+<button class="white" onclick="toggle('tugas-selesai')">SELESAI (<span id="count-selesai">0</span>)</button>
+</div>
+
+<div id="form-tugas" class="panel hidden">
+<input id="input-tugas" placeholder="Nama tugas">
+<input id="input-matkul-tugas" placeholder="Mata kuliah">
+<input id="input-deadline" type="date">
+<button id="simpan-tugas" class="dark" onclick="simpanTugas()">SIMPAN</button>
+<button id="batal-edit-tugas" class="cancel-edit hidden" onclick="batalEditTugas()">BATAL EDIT</button>
+</div>
+
+<div id="tugas-selesai" class="panel hidden">
+<small class="panel-label">TUGAS SELESAI</small>
+<div id="tugas-selesai-list"></div>
+</div>
+</section>
+
+<section class="card bg-pink">
+<div class="card-head">
+<div><small>KEUANGAN</small><h2>Keuangan</h2></div>
+<button class="mini-btn white" onclick="toggle('form-dompet')">+ DOMPET</button>
+</div>
+
+<div class="wallet">
+<div class="wallet-title">
+<small>DOMPET AKTIF</small>
+<button class="wallet-btn delete-wallet" onclick="hapusDompet()">HAPUS</button>
+</div>
+<select id="pilih-dompet" onchange="gantiDompet()"></select>
+<h2 id="saldo-display">Rp 0</h2>
+</div>
+
+<div class="finance-summary">
+<div><small>MASUK</small><strong id="total-masuk">Rp 0</strong></div>
+<div><small>KELUAR</small><strong id="total-keluar">Rp 0</strong></div>
+</div>
+
+<div class="actions">
+<button class="yellow" onclick="bukaTambahTransaksi()">CATAT</button>
+<button class="white" onclick="toggle('riwayat-container')">RIWAYAT</button>
+</div>
+
+<div id="form-dompet" class="panel hidden">
+<input id="input-nama-dompet" placeholder="Nama dompet">
+<input id="input-saldo-dompet" type="number" placeholder="Saldo awal">
+<button class="dark" onclick="tambahDompet()">TAMBAH DOMPET</button>
+</div>
+
+<div id="form-transaksi" class="panel hidden">
+<span id="transaksi-dompet-info" class="transaction-wallet hidden"></span>
+<input id="nominal-uang" type="number" placeholder="Jumlah Rp">
+<select id="tipe-uang">
+<option value="keluar">Keluar</option>
+<option value="masuk">Masuk</option>
+</select>
+<select id="kategori-uang">
+<option>Makan & Minum</option>
+<option>Transportasi</option>
+<option>Tugas Kuliah</option>
+<option>Hiburan Digital</option>
+<option>Lainnya</option>
+</select>
+<input id="tanggal-transaksi" type="date">
+<button id="simpan-transaksi" class="dark" onclick="simpanTransaksi()">SIMPAN TRANSAKSI</button>
+<button id="batal-edit-transaksi" class="cancel-edit hidden" onclick="batalEditTransaksi()">BATAL EDIT</button>
+</div>
+
+<div id="riwayat-container" class="panel hidden">
+<h3>RIWAYAT</h3>
+<div class="transaction-filters">
+<button id="filter-semua" class="filter-btn active" onclick="setFilterTransaksi('semua')">SEMUA</button>
+<button id="filter-masuk" class="filter-btn" onclick="setFilterTransaksi('masuk')">MASUK</button>
+<button id="filter-keluar" class="filter-btn" onclick="setFilterTransaksi('keluar')">KELUAR</button>
+</div>
+<div id="daftar-riwayat"></div>
+</div>
+</section>
+
+<section class="card bg-orange">
+<div class="card-head">
+<div><small>TARGET</small><h2>Tabungan</h2></div>
+<span id="persen-tabungan" class="badge white">0%</span>
+</div>
+
+<h3 id="nama-target">Belum Ada Target</h3>
+<p id="teks-tabungan" class="saving-text">Rp 0 / Rp 0</p>
+<div class="progress"><div id="progress-fill"></div></div>
+<p id="sisa-target" class="muted compact">Atur target tabungan terlebih dahulu.</p>
+
+<div class="actions">
+<button class="white" onclick="toggle('form-target')">ATUR TARGET</button>
+<button class="dark" onclick="toggle('aksi-tabungan')">TABUNG / TARIK</button>
+</div>
+
+<div id="form-target" class="panel hidden">
+<input id="input-nama-target" placeholder="Tujuan tabungan">
+<input id="input-nominal-target" type="number" placeholder="Target Rp">
+<button class="dark" onclick="aturTarget()">SIMPAN</button>
+</div>
+
+<div id="aksi-tabungan" class="panel hidden">
+<input id="nominal-tabung" type="number" placeholder="Jumlah Rp">
+<div class="actions">
+<button class="dark" onclick="menabung()">TABUNG</button>
+<button class="white" onclick="tarikTabungan()">TARIK</button>
+</div>
+</div>
+</section>
+
+</div>
+<button class="logout" onclick="konfirmasiLogout()">LOGOUT</button>
+</main>
+</div>
+
+<div id="confirm-modal" class="modal hidden">
+<div class="card modal-card">
+<h3 id="confirm-text">Yakin?</h3>
+<div class="actions">
+<button class="white" onclick="tutupConfirm()">BATAL</button>
+<button id="confirm-ok" class="pink">LANJUTKAN</button>
+</div>
+</div>
+</div>
+
+<div id="info-modal" class="modal hidden">
+<div class="card modal-card">
+<h3 id="info-text"></h3>
+<button class="dark" onclick="toggle('info-modal')">OK</button>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
