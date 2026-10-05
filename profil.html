@@ -89,11 +89,36 @@
 </div>
 </section>
 
+<section class="danger-card">
+<div>
+<small>AKUN</small>
+<h2>ZONA BERBAHAYA</h2>
+<p>Menghapus akun akan menghapus profil, jadwal, mata kuliah, tugas, dompet, transaksi, tabungan, dan foto profil secara permanen.</p>
+</div>
+<button class="delete-account-btn" onclick="bukaHapusAkun()">HAPUS AKUN</button>
+</section>
+
 <div id="edit-actions" class="edit-actions hidden">
 <button class="cancel" onclick="batalEdit()">BATAL</button>
 <button class="save" onclick="simpanProfil()">SIMPAN PERUBAHAN</button>
 </div>
 
+</div>
+
+<div id="delete-account-modal" class="modal hidden">
+<div class="modal-card delete-account-modal-card">
+<span class="danger-badge">HAPUS AKUN</span>
+<h3>Tindakan ini permanen.</h3>
+<p>Masukkan password akunmu dan ketik <strong>HAPUS</strong> untuk konfirmasi.</p>
+<label>PASSWORD</label>
+<input id="delete-password" type="password" autocomplete="current-password" placeholder="Password akun">
+<label>KETIK HAPUS</label>
+<input id="delete-confirm-text" autocomplete="off" placeholder="HAPUS">
+<div class="delete-modal-actions">
+<button class="modal-cancel" onclick="tutupHapusAkun()">BATAL</button>
+<button id="delete-account-confirm" class="modal-delete" onclick="hapusAkun()">HAPUS PERMANEN</button>
+</div>
+</div>
 </div>
 
 <div id="saved-modal" class="modal hidden">
