@@ -7,6 +7,39 @@ function confirmBox(t,a,b="LANJUTKAN"){$("confirm-text").innerText=t;$("confirm-
 function tutupConfirm(){$("confirm-modal").classList.add("hidden");aksiConfirm=null}
 $("confirm-ok").onclick=()=>{let a=aksiConfirm;tutupConfirm();if(a)a()};
 async function q(p){let{data,error}=await p;if(error)throw error;return data}
+const offlineStore=window.StudentPlannerOffline;
+const cloudReady=()=>navigator.onLine!==false&&!sb?.__offlineFallback;
+function updateOfflineUI(forceOffline=!cloudReady()){
+let banner=$("offline-banner");if(!banner||!user)return;
+let pending=offlineStore?.pending(user.id)||0;
+banner.classList.toggle("hidden",!forceOffline&&!pending);
+$("offline-pending").innerText=pending+" TERTUNDA";
+}
+function saveDashboardOffline(){
+if(!user||!offlineStore)return;
+offlineStore.cache(user.id,"dashboard",{jadwal,tugas,wallets,transaksi,saving,dompetAktifId,savedAt:Date.now()});
+}
+function restoreDashboardOffline(){
+let c=offlineStore?.cached(user?.id,"dashboard",null);if(!c)return false;
+jadwal=Array.isArray(c.jadwal)?c.jadwal:[];
+tugas=Array.isArray(c.tugas)?c.tugas:[];
+wallets=Array.isArray(c.wallets)?c.wallets:[];
+transaksi=Array.isArray(c.transaksi)?c.transaksi:[];
+saving=c.saving||{target_name:"",target_amount:0,amount:0};
+dompetAktifId=c.dompetAktifId||wallets[0]?.id||null;
+renderSemua();syncAndroidReminders();updateOfflineUI(true);return true;
+}
+async function syncOfflineChanges(show=false){
+if(!user||!offlineStore||!cloudReady())return;
+let r=await offlineStore.sync(sb,user.id);updateOfflineUI(false);
+if(r.error&&show)info("Sebagian perubahan offline belum bisa disinkronkan: "+(r.error.message||r.error));
+}
+async function runCloudOrQueue(cloudFn,offlineFn,operation){
+if(cloudReady()){
+try{await cloudFn();return false}catch(e){if(!offlineStore?.isNetworkError(e))throw e}
+}
+offlineFn();offlineStore.queue(user.id,operation);saveDashboardOffline();updateOfflineUI(true);return true;
+}
 function setLoading(show,text="MEMUAT..."){let el=$("app-loading");if(!el)return;if(text)$("loading-text").innerText=text;el.classList.toggle("hidden",!show)}
 function setAuthButtons(disabled){["login-btn","register-btn"].forEach(id=>{let b=$(id);if(b)b.disabled=disabled})}
 function namaPanggilan(nama){
@@ -15,30 +48,48 @@ if(nama.includes(",")){let setelah=nama.split(",")[1]?.trim();if(setelah)return 
 return nama.split(/\s+/)[0];
 }
 async function loadIdentitas(){
-let p=await q(sb.from("profiles").select("name,nim").maybeSingle());
-if(!p?.name?.trim()){
-$("onboarding-name").value="";
-$("onboarding-nim").value=p?.nim||"";
-$("onboarding-modal").classList.remove("hidden");
+let p=null;
+if(cloudReady()){
+try{
+p=await q(sb.from("profiles").select("name,nim").maybeSingle());
+if(p)offlineStore.cache(user.id,"identity",p);
+}catch(e){if(!offlineStore?.isNetworkError(e))throw e}
+}
+if(!p)p=offlineStore?.cached(user.id,"identity",null);
+if(!p){
+$("onboarding-modal").classList.add("hidden");
 $("sapaan-user").innerText="HALO!";
 $("dashboard-avatar").innerText="?";
+updateOfflineUI(true);
 return false;
+}
+if(!p?.name?.trim()){
+if(!cloudReady()){
+$("onboarding-modal").classList.add("hidden");$("sapaan-user").innerText="HALO!";$("dashboard-avatar").innerText="?";return false;
+}
+$("onboarding-name").value="";$("onboarding-nim").value=p?.nim||"";$("onboarding-modal").classList.remove("hidden");
+$("sapaan-user").innerText="HALO!";$("dashboard-avatar").innerText="?";return false;
 }
 let nama=namaPanggilan(p.name);
 $("sapaan-user").innerText=`HALO, ${nama.toUpperCase()}!`;
 $("dashboard-avatar").innerText=(nama[0]||"?").toUpperCase();
-$("onboarding-modal").classList.add("hidden");
-return true;
+$("onboarding-modal").classList.add("hidden");return true;
 }
 async function simpanOnboarding(){
 let name=$("onboarding-name").value.trim(),nim=$("onboarding-nim").value.trim();
 if(name.length<2)return info("Masukkan nama lengkap terlebih dahulu.");
 setLoading(true,"MENYIAPKAN PROFIL...");
 try{
-await q(sb.from("profiles").upsert({user_id:user.id,name,nim:nim||null,updated_at:new Date().toISOString()},{onConflict:"user_id"}));
+let data={name,nim:nim||null,updated_at:new Date().toISOString()};
+let queued=await runCloudOrQueue(
+()=>q(sb.from("profiles").upsert({user_id:user.id,...data},{onConflict:"user_id"})),
+()=>offlineStore.cache(user.id,"identity",{name,nim:nim||null}),
+{kind:"profile_update",data}
+);
 $("onboarding-modal").classList.add("hidden");
+if(!queued)offlineStore.cache(user.id,"identity",{name,nim:nim||null});
 await loadIdentitas();
-info(`Selamat datang, ${namaPanggilan(name)}! Planner-mu siap digunakan 🎉`);
+info(queued?"Profil disimpan offline dan akan disinkronkan saat internet kembali.":`Selamat datang, ${namaPanggilan(name)}! Planner-mu siap digunakan 🎉`);
 }catch(e){info("Gagal menyimpan profil: "+e.message)}
 finally{setLoading(false)}
 }
@@ -260,11 +311,11 @@ $("dashboard-screen").classList.add("hidden");
 $("login-screen").classList.remove("hidden");
 }
 function konfirmasiLogout(){confirmBox("Yakin ingin keluar dari Student Planner?",logout,"LOGOUT")}
-async function logout(){if(rt)await sb.removeChannel(rt);try{window.AndroidNotifications?.clearReminders()}catch{}await sb.auth.signOut();$("dashboard-screen").classList.add("hidden");$("login-screen").classList.remove("hidden");$("email").value=$("password").value="";scrollTo(0,0)}
+async function logout(){if(rt)await sb.removeChannel(rt);try{window.AndroidNotifications?.clearReminders()}catch{}if(user)offlineStore?.clearUser(user.id);await sb.auth.signOut();$("dashboard-screen").classList.add("hidden");$("login-screen").classList.remove("hidden");$("email").value=$("password").value="";scrollTo(0,0)}
 async function bukaDashboard(){
 $("login-screen").classList.add("hidden");$("dashboard-screen").classList.remove("hidden");
 setLoading(true,"MENYIAPKAN PLANNER...");
-try{await migrasiLokal();await Promise.all([loadDashboard(),loadIdentitas()]);pasangRealtime();setTimeout(offerNotificationIntro,350);scrollTo(0,0)}
+try{if(cloudReady())await migrasiLokal();await Promise.all([loadDashboard(),loadIdentitas()]);pasangRealtime();setTimeout(offerNotificationIntro,350);scrollTo(0,0)}
 catch(e){info("Gagal memuat data: "+e.message)}
 finally{setLoading(false)}
 }
@@ -334,16 +385,29 @@ localStorage.setItem(key,"1");
 if(!notificationPrefs().enabled)info("🔔 Pengingat jadwal dan deadline sudah tersedia. Aktifkan dari menu PROFIL.");
 }catch{}
 }
-async function loadDashboard(){await Promise.all([loadJadwal(),loadTugas(),loadFinance()]);renderSemua();syncAndroidReminders()}
+async function loadDashboard(){
+if(!cloudReady()){
+if(!restoreDashboardOffline())throw new Error("Belum ada data offline di perangkat ini. Hubungkan internet sekali untuk menyiapkan cache.");
+return;
+}
+await syncOfflineChanges();
+await Promise.all([loadJadwal(),loadTugas(),loadFinance()]);
+renderSemua();syncAndroidReminders();saveDashboardOffline();updateOfflineUI(false);
+}
 async function loadJadwal(){
+try{
 let d=await q(sb.from("schedules").select("*"));
-jadwal=d.map(x=>({id:x.id,hari:x.day,matkul:x.course_name,waktu:x.time_range,ruangan:x.room||""}));
+jadwal=d.map(x=>({id:x.id,hari:x.day,matkul:x.course_name,waktu:x.time_range,ruangan:x.room||""}));saveDashboardOffline();
+}catch(e){if(offlineStore?.isNetworkError(e)&&restoreDashboardOffline())return;throw e}
 }
 async function loadTugas(){
+try{
 let d=await q(sb.from("tasks").select("*"));
-tugas=d.map(x=>({id:x.id,nama:x.name,matkul:x.course_name,deadline:x.deadline,selesai:x.completed}));
+tugas=d.map(x=>({id:x.id,nama:x.name,matkul:x.course_name,deadline:x.deadline,selesai:x.completed}));saveDashboardOffline();
+}catch(e){if(offlineStore?.isNetworkError(e)&&restoreDashboardOffline())return;throw e}
 }
 async function loadFinance(){
+try{
 let [w,t,s]=await Promise.all([
 q(sb.from("wallets").select("*").order("created_at")),
 q(sb.from("transactions").select("*").order("tx_date",{ascending:false}).order("created_at",{ascending:false})),
@@ -355,10 +419,11 @@ if(!wallets.some(x=>x.id===dompetAktifId))dompetAktifId=wallets[0].id;
 transaksi=t.map(x=>({id:x.id,wallet_id:x.wallet_id,dompet:x.wallet_name,nominal:Number(x.amount),tipe:x.type,kategori:x.category,tanggal:x.tx_date}));
 if(!s){await q(sb.from("savings").insert({user_id:user.id}));saving={target_name:"",target_amount:0,amount:0}}
 else saving={target_name:s.target_name||"",target_amount:Number(s.target_amount||0),amount:Number(s.amount||0)};
-renderDompet();renderTransaksi();renderTabungan();
+renderDompet();renderTransaksi();renderTabungan();saveDashboardOffline();
+}catch(e){if(offlineStore?.isNetworkError(e)&&restoreDashboardOffline())return;throw e}
 }
 function pasangRealtime(){
-if(rt)return;
+if(rt||!cloudReady())return;
 let refresh=()=>{clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>loadDashboard().catch(e=>info(e.message)),250)};
 rt=sb.channel("student-planner-"+user.id);
 ["schedules","tasks","wallets","transactions","savings"].forEach(table=>rt.on("postgres_changes",{event:"*",schema:"public",table,filter:`user_id=eq.${user.id}`},refresh));
@@ -383,11 +448,25 @@ let hari=$("input-hari").value,matkul=$("input-matkul").value.trim(),waktu=$("in
 if(!hari||!matkul||!waktu)return info("Isi hari, mata kuliah, dan waktu terlebih dahulu.");
 try{
 let d={day:hari,course_name:matkul,time_range:waktu,room:ruangan||null};
-editJadwal===null?await q(sb.from("schedules").insert({...d,user_id:user.id})):await q(sb.from("schedules").update(d).eq("id",jadwal[editJadwal].id));
-resetFormJadwal();$("form-jadwal").classList.add("hidden");await loadJadwal();renderJadwal();syncAndroidReminders();
+let editing=editJadwal!==null,id=editing?jadwal[editJadwal].id:offlineStore.uuid(),idx=editJadwal;
+let queued=await runCloudOrQueue(
+()=>editing?q(sb.from("schedules").update(d).eq("id",id)):q(sb.from("schedules").insert({id,...d,user_id:user.id})),
+()=>{let local={id,hari,matkul,waktu,ruangan};if(editing)jadwal[idx]=local;else jadwal.push(local)},
+{kind:editing?"schedule_update":"schedule_insert",id,data:d}
+);
+resetFormJadwal();$("form-jadwal").classList.add("hidden");
+if(!queued)await loadJadwal();renderJadwal();syncAndroidReminders();saveDashboardOffline();
 }catch(e){info(e.message)}
 }
-function hapusJadwal(i){confirmBox(`Hapus jadwal ${jadwal[i].matkul}?`,async()=>{try{await q(sb.from("schedules").delete().eq("id",jadwal[i].id));batalEditJadwal();await loadJadwal();renderJadwal();syncAndroidReminders()}catch(e){info(e.message)}},"HAPUS")}
+function hapusJadwal(i){confirmBox(`Hapus jadwal ${jadwal[i].matkul}?`,async()=>{try{
+let id=jadwal[i].id;
+let queued=await runCloudOrQueue(
+()=>q(sb.from("schedules").delete().eq("id",id)),
+()=>jadwal.splice(i,1),
+{kind:"schedule_delete",id}
+);
+batalEditJadwal();if(!queued)await loadJadwal();renderJadwal();syncAndroidReminders();saveDashboardOffline();
+}catch(e){info(e.message)}},"HAPUS")}
 
 /* TUGAS */
 function statusDeadline(t){
@@ -411,13 +490,34 @@ async function simpanTugas(){
 let nama=$("input-tugas").value.trim(),matkul=$("input-matkul-tugas").value.trim(),deadline=$("input-deadline").value;
 if(!nama||!matkul||!deadline)return info("Isi nama tugas, mata kuliah, dan deadline.");
 try{
-let d={name:nama,course_name:matkul,deadline};
-editTugas===null?await q(sb.from("tasks").insert({...d,user_id:user.id,completed:false})):await q(sb.from("tasks").update(d).eq("id",tugas[editTugas].id));
-resetFormTugas();$("form-tugas").classList.add("hidden");await loadTugas();renderTugas();syncAndroidReminders();
+let d={name:nama,course_name:matkul,deadline},editing=editTugas!==null,id=editing?tugas[editTugas].id:offlineStore.uuid(),idx=editTugas;
+if(!editing)d.completed=false;
+let queued=await runCloudOrQueue(
+()=>editing?q(sb.from("tasks").update(d).eq("id",id)):q(sb.from("tasks").insert({id,...d,user_id:user.id})),
+()=>{let old=editing?tugas[idx]:null,local={id,nama,matkul,deadline,selesai:editing?!!old.selesai:false};if(editing)tugas[idx]=local;else tugas.push(local)},
+{kind:editing?"task_update":"task_insert",id,data:d}
+);
+resetFormTugas();$("form-tugas").classList.add("hidden");if(!queued)await loadTugas();renderTugas();syncAndroidReminders();saveDashboardOffline();
 }catch(e){info(e.message)}
 }
-async function toggleTugas(i){try{await q(sb.from("tasks").update({completed:!tugas[i].selesai}).eq("id",tugas[i].id));await loadTugas();renderTugas();syncAndroidReminders()}catch(e){info(e.message)}}
-function hapusTugas(i){confirmBox(`Hapus tugas ${tugas[i].nama}?`,async()=>{try{await q(sb.from("tasks").delete().eq("id",tugas[i].id));batalEditTugas();await loadTugas();renderTugas();syncAndroidReminders()}catch(e){info(e.message)}},"HAPUS")}
+async function toggleTugas(i){try{
+let id=tugas[i].id,completed=!tugas[i].selesai;
+let queued=await runCloudOrQueue(
+()=>q(sb.from("tasks").update({completed}).eq("id",id)),
+()=>{tugas[i].selesai=completed},
+{kind:"task_update",id,data:{completed}}
+);
+if(!queued)await loadTugas();renderTugas();syncAndroidReminders();saveDashboardOffline();
+}catch(e){info(e.message)}}
+function hapusTugas(i){confirmBox(`Hapus tugas ${tugas[i].nama}?`,async()=>{try{
+let id=tugas[i].id;
+let queued=await runCloudOrQueue(
+()=>q(sb.from("tasks").delete().eq("id",id)),
+()=>tugas.splice(i,1),
+{kind:"task_delete",id}
+);
+batalEditTugas();if(!queued)await loadTugas();renderTugas();syncAndroidReminders();saveDashboardOffline();
+}catch(e){info(e.message)}},"HAPUS")}
 
 /* DOMPET */
 const walletAktif=()=>wallets.find(x=>x.id===dompetAktifId);
@@ -431,11 +531,29 @@ function gantiDompet(){dompetAktifId=$("pilih-dompet").value;renderDompet()}
 async function tambahDompet(){
 let name=$("input-nama-dompet").value.trim(),balance=Number($("input-saldo-dompet").value||0);
 if(!name)return info("Masukkan nama dompet.");if(balance<0)return info("Saldo awal tidak boleh negatif.");
-try{let d=await q(sb.from("wallets").insert({user_id:user.id,name,balance}).select().single());dompetAktifId=d.id;$("input-nama-dompet").value=$("input-saldo-dompet").value="";toggle("form-dompet");await loadFinance()}catch(e){info(e.code==="23505"?"Dompet tersebut sudah ada.":e.message)}
+if(wallets.some(w=>w.name.toLowerCase()===name.toLowerCase()))return info("Dompet tersebut sudah ada.");
+try{
+let id=offlineStore.uuid();
+let queued=await runCloudOrQueue(
+()=>q(sb.from("wallets").insert({id,user_id:user.id,name,balance})),
+()=>wallets.push({id,user_id:user.id,name,balance}),
+{kind:"wallet_insert",id,data:{name,balance}}
+);
+dompetAktifId=id;$("input-nama-dompet").value=$("input-saldo-dompet").value="";toggle("form-dompet");
+if(!queued)await loadFinance();else{renderDompet();saveDashboardOffline()}
+}catch(e){info(e.code==="23505"?"Dompet tersebut sudah ada.":e.message)}
 }
 function hapusDompet(){
 if(wallets.length<=1)return info("Minimal harus ada satu dompet.");
-let w=walletAktif();confirmBox(`Hapus dompet "${w.name}" dengan saldo ${rupiah(w.balance)}? Riwayat transaksi tetap disimpan.`,async()=>{try{await q(sb.from("wallets").delete().eq("id",w.id));dompetAktifId=null;await loadFinance()}catch(e){info(e.message)}},"HAPUS");
+let w=walletAktif();confirmBox(`Hapus dompet "${w.name}" dengan saldo ${rupiah(w.balance)}? Riwayat transaksi tetap disimpan.`,async()=>{try{
+let id=w.id;
+let queued=await runCloudOrQueue(
+()=>q(sb.from("wallets").delete().eq("id",id)),
+()=>{wallets=wallets.filter(x=>x.id!==id);transaksi.forEach(t=>{if(t.wallet_id===id)t.wallet_id=null})},
+{kind:"wallet_delete",id}
+);
+dompetAktifId=null;if(!queued)await loadFinance();else{dompetAktifId=wallets[0]?.id||null;renderDompet();renderTransaksi();saveDashboardOffline()}
+}catch(e){info(e.message)}},"HAPUS");
 }
 
 /* TRANSAKSI */
@@ -447,13 +565,29 @@ let t=transaksi[i];if(!t.wallet_id||!wallets.some(w=>w.id===t.wallet_id))return 
 editTransaksi=i;$("nominal-uang").value=t.nominal;$("tipe-uang").value=t.tipe;$("kategori-uang").value=t.kategori;$("tanggal-transaksi").value=t.tanggal;$("simpan-transaksi").innerText="SIMPAN PERUBAHAN";$("batal-edit-transaksi").classList.remove("hidden");$("transaksi-dompet-info").innerText=`DOMPET: ${t.dompet}`;$("transaksi-dompet-info").classList.remove("hidden");$("form-transaksi").classList.remove("hidden");$("form-transaksi").scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 function batalEditTransaksi(){resetFormTransaksi();$("form-transaksi").classList.add("hidden")}
+function applyLocalTxRecord(id,nominal,tipe,kategori,tanggal){
+let w=walletAktif();if(w)w.balance+=tipe==="masuk"?nominal:-nominal;
+transaksi.unshift({id,wallet_id:w?.id||null,dompet:w?.name||"Dompet",nominal,tipe,kategori,tanggal});
+}
+function applyLocalTxUpdate(i,nominal,tipe,kategori,tanggal){
+let old=transaksi[i],w=wallets.find(x=>x.id===old.wallet_id);
+if(w){w.balance+=old.tipe==="masuk"?-old.nominal:old.nominal;w.balance+=tipe==="masuk"?nominal:-nominal}
+transaksi[i]={...old,nominal,tipe,kategori,tanggal};
+}
 async function simpanTransaksi(){
 let nominal=Number($("nominal-uang").value),tipe=$("tipe-uang").value,kategori=$("kategori-uang").value,tanggal=$("tanggal-transaksi").value;
 if(!nominal||nominal<=0)return info("Masukkan nominal transaksi yang valid.");if(!tanggal)return info("Pilih tanggal transaksi terlebih dahulu.");
 let run=async()=>{try{
-if(editTransaksi===null)await q(sb.rpc("record_transaction",{p_wallet_id:dompetAktifId,p_amount:nominal,p_type:tipe,p_category:kategori,p_tx_date:tanggal}));
-else await q(sb.rpc("update_transaction",{p_transaction_id:transaksi[editTransaksi].id,p_amount:nominal,p_type:tipe,p_category:kategori,p_tx_date:tanggal}));
-resetFormTransaksi();$("form-transaksi").classList.add("hidden");await loadFinance();
+let editing=editTransaksi!==null,idx=editTransaksi,id=editing?transaksi[idx].id:offlineStore.uuid();
+let data={wallet_id:editing?transaksi[idx].wallet_id:dompetAktifId,amount:nominal,type:tipe,category:kategori,tx_date:tanggal};
+let queued=await runCloudOrQueue(
+()=>editing
+?q(sb.rpc("update_transaction",{p_transaction_id:id,p_amount:nominal,p_type:tipe,p_category:kategori,p_tx_date:tanggal}))
+:q(sb.rpc("record_transaction_offline",{p_transaction_id:id,p_wallet_id:dompetAktifId,p_amount:nominal,p_type:tipe,p_category:kategori,p_tx_date:tanggal})),
+()=>editing?applyLocalTxUpdate(idx,nominal,tipe,kategori,tanggal):applyLocalTxRecord(id,nominal,tipe,kategori,tanggal),
+{kind:editing?"tx_update":"tx_record",id,data}
+);
+resetFormTransaksi();$("form-transaksi").classList.add("hidden");if(!queued)await loadFinance();else{renderDompet();renderTransaksi();saveDashboardOffline()}
 }catch(e){info(e.message)}};
 if(editTransaksi===null&&tipe==="keluar"&&(walletAktif()?.balance||0)<nominal)return confirmBox("Saldo tidak cukup. Tetap catat hingga saldo menjadi minus?",run,"TETAP CATAT");
 if(editTransaksi!==null&&tipe==="keluar"){
@@ -465,8 +599,17 @@ run();
 function hapusTransaksi(i){
 let t=transaksi[i],ada=t.wallet_id&&wallets.some(w=>w.id===t.wallet_id);
 let pesan=ada?`Hapus transaksi ${t.kategori} ${rupiah(t.nominal)}? Saldo ${t.dompet} akan dikoreksi otomatis.`:`Hapus transaksi ${t.kategori} ${rupiah(t.nominal)}? Hanya riwayat yang dihapus karena dompet sudah tidak ada.`;
-confirmBox(pesan,async()=>{try{await q(sb.rpc("delete_transaction",{p_transaction_id:t.id}));batalEditTransaksi();await loadFinance()}catch(e){info(e.message)}},"HAPUS");
+confirmBox(pesan,async()=>{try{
+let id=t.id;
+let queued=await runCloudOrQueue(
+()=>q(sb.rpc("delete_transaction",{p_transaction_id:id})),
+()=>{let w=wallets.find(x=>x.id===t.wallet_id);if(w)w.balance+=t.tipe==="masuk"?-t.nominal:t.nominal;transaksi.splice(i,1)},
+{kind:"tx_delete",id}
+);
+batalEditTransaksi();if(!queued)await loadFinance();else{renderDompet();renderTransaksi();saveDashboardOffline()}
+}catch(e){info(e.message)}},"HAPUS");
 }
+
 function setFilterTransaksi(f){filterTransaksi=f;renderTransaksi()}
 function renderTransaksi(){
 let masuk=transaksi.filter(x=>x.tipe==="masuk").reduce((a,b)=>a+b.nominal,0),keluar=transaksi.filter(x=>x.tipe==="keluar").reduce((a,b)=>a+b.nominal,0);
@@ -479,23 +622,58 @@ $("daftar-riwayat").innerHTML=d.length?d.map(x=>`<div class="history-row"><div c
 async function aturTarget(){
 let target_name=$("input-nama-target").value.trim(),target_amount=Number($("input-nominal-target").value);
 if(!target_name||target_amount<=0)return info("Isi nama dan nominal target tabungan.");
-try{await q(sb.from("savings").upsert({user_id:user.id,target_name,target_amount,amount:Math.min(saving.amount,target_amount),updated_at:new Date().toISOString()}));$("input-nama-target").value=$("input-nominal-target").value="";toggle("form-target");await loadFinance()}catch(e){info(e.message)}
+try{
+let data={target_name,target_amount,amount:Math.min(saving.amount,target_amount),updated_at:new Date().toISOString()};
+let queued=await runCloudOrQueue(
+()=>q(sb.from("savings").upsert({user_id:user.id,...data})),
+()=>saving={...saving,...data},
+{kind:"savings_target",data}
+);
+$("input-nama-target").value=$("input-nominal-target").value="";toggle("form-target");if(!queued)await loadFinance();else{renderTabungan();saveDashboardOffline()}
+}catch(e){info(e.message)}
 }
 async function menabung(){
 if(!saving.target_amount)return info("Atur target tabungan terlebih dahulu.");
 let n=Number($("nominal-tabung").value);if(!n||n<=0)return info("Masukkan nominal tabungan.");
-try{let before=saving.amount;await q(sb.rpc("deposit_savings",{p_wallet_id:dompetAktifId,p_amount:n}));$("nominal-tabung").value="";await loadFinance();if(before<saving.target_amount&&saving.amount>=saving.target_amount)info(`Target "${saving.target_name}" berhasil tercapai 🎉`)}catch(e){info(e.message)}
+let add=Math.min(n,Math.max(saving.target_amount-saving.amount,0)),w=walletAktif();
+if(add<=0)return info("Target tabungan sudah tercapai.");if((w?.balance||0)<add)return info("Saldo dompet tidak cukup.");
+try{
+let before=saving.amount;
+let queued=await runCloudOrQueue(
+()=>q(sb.rpc("deposit_savings",{p_wallet_id:dompetAktifId,p_amount:n})),
+()=>{w.balance-=add;saving.amount+=add;saving.updated_at=new Date().toISOString()},
+{kind:"savings_deposit",data:{wallet_id:dompetAktifId,amount:n}}
+);
+$("nominal-tabung").value="";if(!queued)await loadFinance();else{renderDompet();renderTabungan();saveDashboardOffline()}
+if(before<saving.target_amount&&saving.amount>=saving.target_amount)info(`Target "${saving.target_name}" berhasil tercapai 🎉`);
+}catch(e){info(e.message)}
 }
 function tarikTabungan(){
 if(!saving.target_amount)return info("Belum ada target tabungan.");
 let n=Number($("nominal-tabung").value);if(!n||n<=0)return info("Masukkan nominal yang ingin ditarik.");if(n>saving.amount)return info(`Tabungan hanya ${rupiah(saving.amount)}.`);
-confirmBox(`Tarik ${rupiah(n)} ke ${walletAktif()?.name}?`,async()=>{try{await q(sb.rpc("withdraw_savings",{p_wallet_id:dompetAktifId,p_amount:n}));$("nominal-tabung").value="";await loadFinance()}catch(e){info(e.message)}},"TARIK");
+confirmBox(`Tarik ${rupiah(n)} ke ${walletAktif()?.name}?`,async()=>{try{
+let w=walletAktif();
+let queued=await runCloudOrQueue(
+()=>q(sb.rpc("withdraw_savings",{p_wallet_id:dompetAktifId,p_amount:n})),
+()=>{saving.amount-=n;if(w)w.balance+=n;saving.updated_at=new Date().toISOString()},
+{kind:"savings_withdraw",data:{wallet_id:dompetAktifId,amount:n}}
+);
+$("nominal-tabung").value="";if(!queued)await loadFinance();else{renderDompet();renderTabungan();saveDashboardOffline()}
+}catch(e){info(e.message)}},"TARIK");
 }
+
 function renderTabungan(){
 let p=saving.target_amount?Math.min(100,Math.round(saving.amount/saving.target_amount*100)):0;
 $("nama-target").innerText=saving.target_name||"Belum Ada Target";$("teks-tabungan").innerText=`${rupiah(saving.amount)} / ${rupiah(saving.target_amount)}`;$("persen-tabungan").innerText=p+"%";$("progress-fill").style.width=p+"%";
 $("sisa-target").innerText=!saving.target_amount?"Atur target tabungan terlebih dahulu.":saving.amount>=saving.target_amount?"Target tercapai 🎉":`Kurang ${rupiah(saving.target_amount-saving.amount)} lagi.`;
 }
+
+window.addEventListener("offline",()=>updateOfflineUI(true));
+window.addEventListener("online",async()=>{
+if(!user||sb?.__offlineFallback)return;
+try{await syncOfflineChanges(true);await Promise.all([loadDashboard(),loadIdentitas()]);pasangRealtime()}catch(e){updateOfflineUI(true)}
+});
+window.addEventListener("studentplanner:offlinequeue",()=>updateOfflineUI(!cloudReady()));
 
 /* START */
 sb.auth.onAuthStateChange((event,session)=>{
