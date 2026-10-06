@@ -497,6 +497,13 @@ $("nama-target").innerText=saving.target_name||"Belum Ada Target";$("teks-tabung
 $("sisa-target").innerText=!saving.target_amount?"Atur target tabungan terlebih dahulu.":saving.amount>=saving.target_amount?"Target tercapai 🎉":`Kurang ${rupiah(saving.target_amount-saving.amount)} lagi.`;
 }
 
+/* Android-only application controls */
+try {
+  if (window.AndroidNotifications && typeof window.AndroidNotifications.openAboutApp === "function") {
+    $("android-app-tools")?.classList.remove("hidden");
+  }
+} catch {}
+
 /* START */
 sb.auth.onAuthStateChange((event,session)=>{
 if(event==="PASSWORD_RECOVERY"){
