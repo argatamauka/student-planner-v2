@@ -13,6 +13,9 @@ import android.graphics.Color;
 import android.content.res.ColorStateList;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -114,7 +117,7 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.3.0");
+        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.3.1");
 
         webView.addJavascriptInterface(new NotificationBridge(), "AndroidNotifications");
 
@@ -144,19 +147,26 @@ public class MainActivity extends Activity {
                     WebResourceRequest request,
                     WebResourceError error) {
                 super.onReceivedError(view, request, error);
-                if (!request.isForMainFrame()) return;
                 Uri uri = request.getUrl();
                 String path = uri != null ? uri.getPath() : "";
-                if (uri != null &&
-                    "studentplannerarga.vercel.app".equalsIgnoreCase(uri.getHost()) &&
-                    (path == null || !path.startsWith("/__offline__/"))) {
-                    view.loadUrl(LOCAL_APP_URL);
+                boolean productionResource = uri != null
+                    && "studentplannerarga.vercel.app".equalsIgnoreCase(uri.getHost())
+                    && (path == null || !path.startsWith("/__offline__/"));
+
+                if (productionResource && !hasUsableNetwork()) {
+                    view.post(() -> {
+                        if (!isOfflineBundleUrl(view.getUrl())) view.loadUrl(LOCAL_APP_URL);
+                    });
                 }
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+                if (!hasUsableNetwork() && !isOfflineBundleUrl(url)) {
+                    view.loadUrl(LOCAL_APP_URL);
+                    return;
+                }
                 injectNativeAboutButton();
             }
         });
@@ -183,9 +193,15 @@ public class MainActivity extends Activity {
         });
 
         if (savedInstanceState == null) {
-            webView.loadUrl(APP_URL);
+            webView.loadUrl(hasUsableNetwork() ? APP_URL : LOCAL_APP_URL);
         } else {
             webView.restoreState(savedInstanceState);
+            if (!hasUsableNetwork()) {
+                webView.post(() -> {
+                    String current = webView.getUrl();
+                    if (!isOfflineBundleUrl(current)) webView.loadUrl(LOCAL_APP_URL);
+                });
+            }
         }
     }
 
@@ -259,6 +275,34 @@ public class MainActivity extends Activity {
         }
     }
 
+
+    private boolean hasUsableNetwork() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null) return false;
+            Network network = cm.getActiveNetwork();
+            if (network == null) return false;
+            NetworkCapabilities caps = cm.getNetworkCapabilities(network);
+            return caps != null
+                && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private boolean isOfflineBundleUrl(String url) {
+        if (url == null) return false;
+        try {
+            Uri uri = Uri.parse(url);
+            String path = uri.getPath();
+            return "studentplannerarga.vercel.app".equalsIgnoreCase(uri.getHost())
+                && path != null
+                && path.startsWith("/__offline__/");
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
 
     private void registerUpdateReceiver() {
         updateDownloadReceiver = new BroadcastReceiver() {
@@ -821,7 +865,7 @@ public class MainActivity extends Activity {
         changeCard.addView(changeTitle);
 
         TextView changelog = new TextView(this);
-        changelog.setText("• Mode offline beta\n• Perubahan disimpan di HP saat offline\n• Sinkron otomatis saat internet kembali");
+        changelog.setText("• Perbaikan tampilan mode offline\n• CSS dan UI kini dimuat langsung dari APK\n• Sinkron otomatis saat internet kembali");
         changelog.setTextSize(11);
         changelog.setTextColor(Color.BLACK);
         LinearLayout.LayoutParams changelogParams = new LinearLayout.LayoutParams(
