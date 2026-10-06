@@ -68,6 +68,7 @@ let native=!!window.AndroidNotifications;
 $("notification-status").innerText=p.enabled&&native?"AKTIF":"BELUM AKTIF";
 $("notification-status").classList.toggle("active",p.enabled&&native);
 $("save-notification-btn").innerText=p.enabled?"SIMPAN PENGATURAN":"AKTIFKAN & SIMPAN";
+$("disable-notification-btn")?.classList.toggle("hidden",!(p.enabled&&native));
 $("notification-help").innerText=native
 ?"Notifikasi memakai suara default HP. Untuk waktu yang presisi, izinkan Alarm & pengingat saat diminta."
 :"Pengaturan tersimpan, tetapi pengingat otomatis tersedia saat Student Planner dibuka melalui aplikasi Android.";
@@ -142,6 +143,20 @@ isiNotifPrefs();
 tampilModal("Pengingat presisi sudah aktif. Notifikasi akan memakai suara default HP.");
 }catch(e){tampilModal("Gagal mengaktifkan pengingat presisi: "+e.message)}
 };
+
+function matikanNotifikasi(){
+let p=getNotifPrefs();
+p.enabled=false;
+localStorage.setItem(notifKey(),JSON.stringify(p));
+sessionStorage.removeItem("studentPlannerExactAlarmRequest");
+try{
+if(window.AndroidNotifications&&typeof window.AndroidNotifications.clearReminders==="function"){
+window.AndroidNotifications.clearReminders();
+}
+}catch{}
+isiNotifPrefs();
+tampilModal("Notifikasi dimatikan. Semua pengingat jadwal dan tugas di HP ini sudah dibatalkan.");
+}
 
 function bukaHapusAkun(){
 $("delete-password").value="";
