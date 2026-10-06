@@ -214,5 +214,5 @@ let r=new FileReader();r.onload=()=>{let im=new Image();im.onload=()=>{let max=7
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){$("saved-modal").classList.add("hidden");tutupHapusAkun()}});
 (async()=>{
 let{data:{session}}=await sb.auth.getSession();if(!session)return location.href="index.html";
-user=session.user;try{profil=await migrasiProfil();await migrasiFoto();await load();isiNotifPrefs();rt=sb.channel("profile-"+user.id).on("postgres_changes",{event:"*",schema:"public",table:"profiles",filter:`user_id=eq.${user.id}`},()=>load()).subscribe()}catch(e){tampilModal("Gagal memuat profil: "+e.message)}
+user=session.user;tampilkanKontrolNotifikasiAndroid();try{profil=await migrasiProfil();await migrasiFoto();await load();isiNotifPrefs();rt=sb.channel("profile-"+user.id).on("postgres_changes",{event:"*",schema:"public",table:"profiles",filter:`user_id=eq.${user.id}`},()=>load()).subscribe()}catch(e){tampilModal("Gagal memuat profil: "+e.message)}
 })();
