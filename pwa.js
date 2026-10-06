@@ -28,7 +28,7 @@ async function installApp(){
   alert(ios?"Di Safari tekan Bagikan, lalu pilih Tambahkan ke Layar Utama.":"Buka menu browser lalu pilih Install app atau Tambahkan ke layar utama.");
 }
 
-if("serviceWorker" in navigator&&!location.pathname.startsWith("/__offline__/")){
+if("serviceWorker" in navigator){
   window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));
 }
 if(standalone())setInstallButtons(false);
