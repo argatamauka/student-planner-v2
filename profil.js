@@ -69,7 +69,7 @@ $("notification-status").innerText=p.enabled&&native?"AKTIF":"BELUM AKTIF";
 $("notification-status").classList.toggle("active",p.enabled&&native);
 $("save-notification-btn").innerText=p.enabled?"SIMPAN PENGATURAN":"AKTIFKAN & SIMPAN";
 $("notification-help").innerText=native
-?"Notifikasi dijadwalkan langsung oleh aplikasi Android di HP ini."
+?"Notifikasi memakai suara default HP. Untuk waktu yang presisi, izinkan Alarm & pengingat saat diminta."
 :"Pengaturan tersimpan, tetapi pengingat otomatis tersedia saat Student Planner dibuka melalui aplikasi Android.";
 }
 function buatPayloadNotifikasi(schedules,tasks,p){
@@ -111,14 +111,37 @@ toggleNotificationSettings(true);
 try{
 if(window.AndroidNotifications){
 window.AndroidNotifications.requestPermission();
+if(typeof window.AndroidNotifications.canScheduleExactAlarms==="function" &&
+   !window.AndroidNotifications.canScheduleExactAlarms()){
+sessionStorage.setItem("studentPlannerExactAlarmRequest","1");
+window.AndroidNotifications.requestExactAlarmPermission();
+tampilModal("Izinkan Alarm & pengingat agar notifikasi muncul tepat sesuai waktu yang kamu pilih.");
+isiNotifPrefs();
+return;
+}
 await syncNotifDariCloud(p);
-tampilModal("Pengingat berhasil diaktifkan. Android mungkin meminta izin notifikasi.");
+tampilModal("Pengingat aktif. Jadwal akan diingatkan sesuai waktu pilihanmu dengan suara notifikasi default HP.");
 }else{
 tampilModal("Pengaturan tersimpan. Pengingat otomatis akan aktif saat kamu menggunakan aplikasi Android Student Planner.");
 }
 isiNotifPrefs();
 }catch(e){tampilModal("Gagal menyimpan pengingat: "+e.message)}
 }
+
+window.onAndroidExactAlarmPermissionChanged=async function(granted){
+if(sessionStorage.getItem("studentPlannerExactAlarmRequest")!=="1")return;
+sessionStorage.removeItem("studentPlannerExactAlarmRequest");
+if(!granted){
+tampilModal("Izin Alarm & pengingat belum diberikan. Notifikasi masih bisa terlambat karena dibatasi Android.");
+return;
+}
+try{
+let p=getNotifPrefs();
+if(p.enabled)await syncNotifDariCloud(p);
+isiNotifPrefs();
+tampilModal("Pengingat presisi sudah aktif. Notifikasi akan memakai suara default HP.");
+}catch(e){tampilModal("Gagal mengaktifkan pengingat presisi: "+e.message)}
+};
 
 function bukaHapusAkun(){
 $("delete-password").value="";
