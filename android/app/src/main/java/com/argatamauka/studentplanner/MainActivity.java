@@ -2,6 +2,7 @@ package com.argatamauka.studentplanner;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.DownloadManager;
 import android.app.Dialog;
 import android.content.Intent;
@@ -68,6 +69,7 @@ public class MainActivity extends Activity {
     private ValueCallback<Uri[]> fileCallback;
     private BroadcastReceiver updateDownloadReceiver;
     private boolean updateSettingsRequested = false;
+    private boolean exactAlarmSettingsRequested = false;
     private final Handler updateHandler = new Handler(Looper.getMainLooper());
     private Runnable updateProgressRunnable;
     private Dialog updateDialog;
@@ -122,7 +124,7 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.3.3");
+        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.3.4");
 
         webView.addJavascriptInterface(new NotificationBridge(), "AndroidNotifications");
 
@@ -250,6 +252,37 @@ public class MainActivity extends Activity {
                     NOTIFICATION_PERMISSION_REQUEST
                 ));
             }
+        }
+
+        @JavascriptInterface
+        public boolean canScheduleExactAlarms() {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true;
+            AlarmManager alarm = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+            return alarm != null && alarm.canScheduleExactAlarms();
+        }
+
+        @JavascriptInterface
+        public void requestExactAlarmPermission() {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
+            AlarmManager alarm = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+            if (alarm == null || alarm.canScheduleExactAlarms()) return;
+            runOnUiThread(() -> {
+                try {
+                    exactAlarmSettingsRequested = true;
+                    Intent intent = new Intent(
+                        Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                        Uri.parse("package:" + getPackageName())
+                    );
+                    startActivity(intent);
+                } catch (Exception ignored) {
+                    exactAlarmSettingsRequested = false;
+                    Toast.makeText(
+                        MainActivity.this,
+                        "Buka Pengaturan > Alarm & pengingat lalu izinkan Student Planner.",
+                        Toast.LENGTH_LONG
+                    ).show();
+                }
+            });
         }
 
         @JavascriptInterface
@@ -708,6 +741,24 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+
+        if (exactAlarmSettingsRequested) {
+            exactAlarmSettingsRequested = false;
+            boolean granted = true;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                AlarmManager alarm = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+                granted = alarm != null && alarm.canScheduleExactAlarms();
+            }
+            final boolean exactGranted = granted;
+            if (webView != null) {
+                webView.post(() -> webView.evaluateJavascript(
+                    "if(window.onAndroidExactAlarmPermissionChanged){window.onAndroidExactAlarmPermissionChanged(" +
+                        exactGranted + ");}",
+                    null
+                ));
+            }
+        }
+
         if (updateSettingsRequested &&
             (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || getPackageManager().canRequestPackageInstalls())) {
             installPendingUpdate();
@@ -928,7 +979,7 @@ public class MainActivity extends Activity {
         changeCard.addView(changeTitle);
 
         TextView changelog = new TextView(this);
-        changelog.setText("• Koneksi internet wajib untuk menggunakan planner\n• Tampilan khusus saat perangkat offline\n• Tombol REFRESH untuk mencoba kembali");
+        changelog.setText("• Pengingat jadwal lebih presisi\n• Menggunakan suara notifikasi default HP\n• Izin Alarm & pengingat untuk waktu yang tepat");
         changelog.setTextSize(11);
         changelog.setTextColor(Color.BLACK);
         LinearLayout.LayoutParams changelogParams = new LinearLayout.LayoutParams(
