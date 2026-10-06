@@ -7,7 +7,9 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.media.AudioAttributes;
 import android.os.Build;
+import android.provider.Settings;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.text.SimpleDateFormat;
@@ -21,8 +23,8 @@ public final class ReminderScheduler {
     private static final String PREFS = "student_planner_reminders";
     private static final String PAYLOAD_KEY = "payload";
     private static final String CODES_KEY = "request_codes";
-    public static final String CHANNEL_SCHEDULE = "schedule_reminders";
-    public static final String CHANNEL_TASKS = "task_reminders";
+    public static final String CHANNEL_SCHEDULE = "schedule_reminders_v2";
+    public static final String CHANNEL_TASKS = "task_reminders_v2";
 
     private ReminderScheduler() {}
 
@@ -31,12 +33,18 @@ public final class ReminderScheduler {
         NotificationManager manager = context.getSystemService(NotificationManager.class);
         if (manager == null) return;
 
+        AudioAttributes soundAttributes = new AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build();
+
         NotificationChannel schedule = new NotificationChannel(
             CHANNEL_SCHEDULE,
             "Jadwal Kuliah",
             NotificationManager.IMPORTANCE_HIGH
         );
         schedule.setDescription("Pengingat sebelum jadwal kuliah dimulai");
+        schedule.setSound(Settings.System.DEFAULT_NOTIFICATION_URI, soundAttributes);
 
         NotificationChannel tasks = new NotificationChannel(
             CHANNEL_TASKS,
@@ -44,6 +52,7 @@ public final class ReminderScheduler {
             NotificationManager.IMPORTANCE_HIGH
         );
         tasks.setDescription("Pengingat deadline tugas");
+        tasks.setSound(Settings.System.DEFAULT_NOTIFICATION_URI, soundAttributes);
 
         manager.createNotificationChannel(schedule);
         manager.createNotificationChannel(tasks);
@@ -85,6 +94,35 @@ public final class ReminderScheduler {
         String payload = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(PAYLOAD_KEY, null);
         if (payload != null && !payload.isEmpty()) sync(context, payload);
+    }
+
+    public static void rescheduleWeekly(Context context, Intent firedIntent) {
+        if (!firedIntent.getBooleanExtra("repeat_weekly", false)) return;
+
+        int code = firedIntent.getIntExtra("notification_id", 0);
+        int day = firedIntent.getIntExtra("repeat_day", -1);
+        int hour = firedIntent.getIntExtra("repeat_hour", -1);
+        int minute = firedIntent.getIntExtra("repeat_minute", -1);
+        int before = firedIntent.getIntExtra("repeat_before", 0);
+        String title = firedIntent.getStringExtra("title");
+        String body = firedIntent.getStringExtra("body");
+        String channel = firedIntent.getStringExtra("channel");
+
+        if (code <= 0 || day == -1 || hour < 0 || minute < 0) return;
+        Calendar next = nextWeekly(day, hour, minute, before);
+        scheduleExact(
+            context,
+            code,
+            next.getTimeInMillis(),
+            title,
+            body,
+            channel,
+            true,
+            day,
+            hour,
+            minute,
+            before
+        );
     }
 
     private static void clearAlarmsOnly(Context context) {
@@ -135,7 +173,19 @@ public final class ReminderScheduler {
             if (!room.isEmpty()) body.append(" • ").append(room);
 
             int code = stableCode(userId + ":schedule:" + item.optString("id", String.valueOf(i)));
-            scheduleRepeating(context, code, trigger.getTimeInMillis(), title, body.toString(), CHANNEL_SCHEDULE);
+            scheduleExact(
+                context,
+                code,
+                trigger.getTimeInMillis(),
+                title,
+                body.toString(),
+                CHANNEL_SCHEDULE,
+                true,
+                day,
+                hour,
+                minute,
+                before
+            );
             codes.add(String.valueOf(code));
         }
     }
@@ -175,7 +225,19 @@ public final class ReminderScheduler {
 
                 if (early.getTimeInMillis() > now) {
                     int code = stableCode(userId + ":task:early:" + item.optString("id", String.valueOf(i)));
-                    scheduleOnce(context, code, early.getTimeInMillis(), earlyTitle, body, CHANNEL_TASKS);
+                    scheduleExact(
+                        context,
+                        code,
+                        early.getTimeInMillis(),
+                        earlyTitle,
+                        body,
+                        CHANNEL_TASKS,
+                        false,
+                        -1,
+                        -1,
+                        -1,
+                        0
+                    );
                     codes.add(String.valueOf(code));
                 }
 
@@ -188,7 +250,19 @@ public final class ReminderScheduler {
 
                 if (due.getTimeInMillis() > now) {
                     int code = stableCode(userId + ":task:due:" + item.optString("id", String.valueOf(i)));
-                    scheduleOnce(context, code, due.getTimeInMillis(), "Deadline hari ini", body, CHANNEL_TASKS);
+                    scheduleExact(
+                        context,
+                        code,
+                        due.getTimeInMillis(),
+                        "Deadline hari ini",
+                        body,
+                        CHANNEL_TASKS,
+                        false,
+                        -1,
+                        -1,
+                        -1,
+                        0
+                    );
                     codes.add(String.valueOf(code));
                 }
             } catch (Exception ignored) {}
@@ -224,31 +298,67 @@ public final class ReminderScheduler {
         }
     }
 
-    private static void scheduleRepeating(Context context, int code, long triggerAt, String title, String body, String channel) {
+    private static void scheduleExact(
+        Context context,
+        int code,
+        long triggerAt,
+        String title,
+        String body,
+        String channel,
+        boolean repeatWeekly,
+        int repeatDay,
+        int repeatHour,
+        int repeatMinute,
+        int repeatBefore
+    ) {
         AlarmManager alarm = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarm == null) return;
-        PendingIntent pi = reminderIntent(context, code, title, body, channel);
-        alarm.setInexactRepeating(
-            AlarmManager.RTC_WAKEUP,
-            triggerAt,
-            AlarmManager.INTERVAL_DAY * 7,
-            pi
+
+        PendingIntent pi = reminderIntent(
+            context,
+            code,
+            title,
+            body,
+            channel,
+            repeatWeekly,
+            repeatDay,
+            repeatHour,
+            repeatMinute,
+            repeatBefore
         );
+
+        boolean exactAllowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarm.canScheduleExactAlarms();
+        if (exactAllowed) {
+            alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+        } else {
+            alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
+        }
     }
 
-    private static void scheduleOnce(Context context, int code, long triggerAt, String title, String body, String channel) {
-        AlarmManager alarm = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (alarm == null) return;
-        PendingIntent pi = reminderIntent(context, code, title, body, channel);
-        alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pi);
-    }
-
-    private static PendingIntent reminderIntent(Context context, int code, String title, String body, String channel) {
+    private static PendingIntent reminderIntent(
+        Context context,
+        int code,
+        String title,
+        String body,
+        String channel,
+        boolean repeatWeekly,
+        int repeatDay,
+        int repeatHour,
+        int repeatMinute,
+        int repeatBefore
+    ) {
         Intent intent = new Intent(context, ReminderReceiver.class);
         intent.putExtra("notification_id", code);
         intent.putExtra("title", title);
         intent.putExtra("body", body);
         intent.putExtra("channel", channel);
+        intent.putExtra("repeat_weekly", repeatWeekly);
+        if (repeatWeekly) {
+            intent.putExtra("repeat_day", repeatDay);
+            intent.putExtra("repeat_hour", repeatHour);
+            intent.putExtra("repeat_minute", repeatMinute);
+            intent.putExtra("repeat_before", repeatBefore);
+        }
         return PendingIntent.getBroadcast(
             context,
             code,
