@@ -122,7 +122,7 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.3.2");
+        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.3.3");
 
         webView.addJavascriptInterface(new NotificationBridge(), "AndroidNotifications");
 
@@ -146,7 +146,7 @@ public class MainActivity extends Activity {
                     WebResourceRequest request,
                     WebResourceError error) {
                 super.onReceivedError(view, request, error);
-                if (request.isForMainFrame() && !hasUsableNetwork()) {
+                if (request.isForMainFrame()) {
                     showInternetRequired();
                 }
             }
@@ -154,10 +154,6 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                if (!hasUsableNetwork()) {
-                    showInternetRequired();
-                    return;
-                }
                 hideInternetRequired();
                 injectNativeAboutButton();
             }
@@ -276,8 +272,7 @@ public class MainActivity extends Activity {
             if (network == null) return false;
             NetworkCapabilities caps = cm.getNetworkCapabilities(network);
             return caps != null
-                && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+                && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
         } catch (Exception ignored) {
             return false;
         }
@@ -365,6 +360,7 @@ public class MainActivity extends Activity {
     private void retryInternetConnection() {
         if (!hasUsableNetwork()) {
             Toast.makeText(this, "Belum ada koneksi internet.", Toast.LENGTH_SHORT).show();
+            showInternetRequired();
             return;
         }
         hideInternetRequired();
