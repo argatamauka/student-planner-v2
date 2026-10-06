@@ -3,18 +3,6 @@ let user=null,profil=null,snapshot={},rt=null,photoUrl=null;
 let aboutUpdateInfo=null;
 const fields=[...document.querySelectorAll(".profile-input")],oldKeys=["nim","name","program","ijazah_name","financial_number","gender","birth_place_date","academic_status","religion","residence","marital_status","faculty","study_program","curriculum_name","academic_probation","race","address","mother_name","mother_phone","mother_address","father_name","father_phone","father_address","guardian_name","guardian_phone","guardian_address"];
 async function q(p){let{data,error}=await p;if(error)throw error;return data}
-const offlineStore=window.StudentPlannerOffline;
-const cloudReady=()=>navigator.onLine!==false&&!sb?.__offlineFallback;
-function updateOfflineUI(force=!cloudReady()){
-let b=$("offline-banner");if(!b||!user)return;let n=offlineStore?.pending(user.id)||0;
-b.classList.toggle("hidden",!force&&!n);$("offline-pending").innerText=n+" TERTUNDA";
-}
-function saveProfileOffline(){if(user&&profil)offlineStore?.cache(user.id,"profile",profil)}
-async function syncOffline(){if(!user||!cloudReady())return;let r=await offlineStore.sync(sb,user.id);updateOfflineUI(false);if(r.error)tampilModal("Sebagian perubahan offline belum tersinkron: "+(r.error.message||r.error))}
-async function runCloudOrQueue(cloud,local,op){
-if(cloudReady()){try{await cloud();return false}catch(e){if(!offlineStore?.isNetworkError(e))throw e}}
-local();offlineStore.queue(user.id,op);saveProfileOffline();updateOfflineUI(true);return true;
-}
 function formData(){let d={};fields.forEach(x=>d[x.dataset.field]=x.value.trim());return d}
 function isiForm(d){fields.forEach(x=>x.value=d?.[x.dataset.field]??"");header()}
 function header(){
@@ -42,16 +30,8 @@ profil.avatar_path=path;localStorage.setItem("studentPlannerPhotoCloudMigrated",
 }catch{}
 }
 async function load(){
-if(cloudReady()){
-try{
-profil=await q(sb.from("profiles").select("*").single());
-saveProfileOffline();offlineStore.cache(user.id,"identity",{name:profil.name||"",nim:profil.nim||""});updateOfflineUI(false);
-}catch(e){if(!offlineStore?.isNetworkError(e))throw e}
-}
-if(!profil)profil=offlineStore?.cached(user.id,"profile",null);
-if(!profil)throw new Error("Belum ada profil offline. Hubungkan internet sekali untuk menyiapkan cache.");
-isiForm(profil);
-if(cloudReady()&&profil.avatar_path)await loadFoto(profil.avatar_path);else if(!$("foto-preview").src){$("foto-preview").classList.add("hidden");$("foto-placeholder").classList.remove("hidden")}
+profil=await q(sb.from("profiles").select("*").single());isiForm(profil);
+if(profil.avatar_path)await loadFoto(profil.avatar_path);else{$("foto-preview").classList.add("hidden");$("foto-placeholder").classList.remove("hidden")}
 }
 async function loadFoto(path){
 try{let blob=await q(sb.storage.from("profile-photos").download(path));if(photoUrl)URL.revokeObjectURL(photoUrl);photoUrl=URL.createObjectURL(blob);$("foto-preview").src=photoUrl;$("foto-preview").classList.remove("hidden");$("foto-placeholder").classList.add("hidden")}catch{}
@@ -61,17 +41,7 @@ function selesaiEdit(){fields.forEach(x=>x.disabled=true);$("edit-btn").classLis
 function batalEdit(){fields.forEach(x=>x.value=snapshot[x.dataset.field]??"");header();selesaiEdit()}
 async function simpanProfil(){
 let d=formData();if(!d.name||!d.nim)return tampilModal("Nama dan NIM tidak boleh kosong.");
-try{
-let data={...d,updated_at:new Date().toISOString()};
-let queued=await runCloudOrQueue(
-()=>q(sb.from("profiles").update(data).eq("user_id",user.id)),
-()=>{profil={...profil,...data}},
-{kind:"profile_update",data}
-);
-if(!queued)profil={...profil,...data};
-offlineStore.cache(user.id,"identity",{name:d.name,nim:d.nim});saveProfileOffline();header();selesaiEdit();
-tampilModal(queued?"Profil disimpan offline dan akan disinkronkan saat internet kembali.":"Profil berhasil diperbarui.");
-}catch(e){tampilModal(e.message)}
+try{await q(sb.from("profiles").update({...d,updated_at:new Date().toISOString()}).eq("user_id",user.id));profil={...profil,...d};header();selesaiEdit();tampilModal("Profil berhasil diperbarui.")}catch(e){tampilModal(e.message)}
 }
 function tampilModal(t){$("modal-message").innerText=t;$("saved-modal").classList.remove("hidden")}
 function tutupModal(){$("saved-modal").classList.add("hidden")}
@@ -122,17 +92,10 @@ tasks:tasks.filter(x=>!x.completed).map(x=>({id:x.id,name:x.name,course:x.course
 }
 async function syncNotifDariCloud(p){
 if(!window.AndroidNotifications||!p.enabled)return;
-let schedules=[],tasks=[];
-if(cloudReady()){
-[schedules,tasks]=await Promise.all([
+let[schedules,tasks]=await Promise.all([
 q(sb.from("schedules").select("id,day,course_name,time_range,room")),
 q(sb.from("tasks").select("id,name,course_name,deadline,completed"))
 ]);
-}else{
-let c=offlineStore?.cached(user.id,"dashboard",null);
-schedules=(c?.jadwal||[]).map(x=>({id:x.id,day:x.hari,course_name:x.matkul,time_range:x.waktu,room:x.ruangan||""}));
-tasks=(c?.tugas||[]).map(x=>({id:x.id,name:x.nama,course_name:x.matkul,deadline:x.deadline,completed:!!x.selesai}));
-}
 window.AndroidNotifications.syncReminders(JSON.stringify(buatPayloadNotifikasi(schedules,tasks,p)));
 }
 async function simpanNotifikasi(){
@@ -238,7 +201,6 @@ $("delete-password").value="";
 $("delete-confirm-text").value="";
 }
 async function hapusAkun(){
-if(!cloudReady())return tampilModal("Menghapus akun membutuhkan koneksi internet.");
 let password=$("delete-password").value,confirmText=$("delete-confirm-text").value.trim().toUpperCase(),btn=$("delete-account-confirm");
 if(!password)return tampilModal("Masukkan password akunmu.");
 if(confirmText!=="HAPUS")return tampilModal('Ketik "HAPUS" untuk mengonfirmasi penghapusan akun.');
@@ -269,22 +231,11 @@ btn.disabled=false;btn.innerText="HAPUS PERMANEN";
 }
 }
 $("foto-input").addEventListener("change",e=>{
-if(!cloudReady()){e.target.value="";return tampilModal("Mengganti foto profil membutuhkan koneksi internet.")}
 let file=e.target.files[0];if(!file)return;if(!file.type.startsWith("image/"))return tampilModal("Pilih file gambar.");
 let r=new FileReader();r.onload=()=>{let im=new Image();im.onload=()=>{let max=700,s=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);c.getContext("2d").drawImage(im,0,0,c.width,c.height);c.toBlob(async blob=>{try{let path=`${user.id}/avatar.jpg`;await q(sb.storage.from("profile-photos").upload(path,blob,{upsert:true,contentType:"image/jpeg"}));await q(sb.from("profiles").update({avatar_path:path,updated_at:new Date().toISOString()}).eq("user_id",user.id));profil.avatar_path=path;await loadFoto(path);tampilModal("Foto profil berhasil diperbarui.")}catch(err){tampilModal(err.message)}},"image/jpeg",.8)};im.src=r.result};r.readAsDataURL(file);
 });
 document.addEventListener("keydown",e=>{if(e.key==="Escape"){$("saved-modal").classList.add("hidden");tutupHapusAkun()}});
 (async()=>{
 let{data:{session}}=await sb.auth.getSession();if(!session)return location.href="index.html";
-user=session.user;try{
-loadAboutApp();
-if(cloudReady()){profil=await migrasiProfil();await migrasiFoto();await syncOffline()}
-await load();isiNotifPrefs();
-if(cloudReady())rt=sb.channel("profile-"+user.id).on("postgres_changes",{event:"*",schema:"public",table:"profiles",filter:`user_id=eq.${user.id}`},()=>load()).subscribe();
-updateOfflineUI();
-}catch(e){tampilModal("Gagal memuat profil: "+e.message)}
+user=session.user;try{loadAboutApp();profil=await migrasiProfil();await migrasiFoto();await load();isiNotifPrefs();rt=sb.channel("profile-"+user.id).on("postgres_changes",{event:"*",schema:"public",table:"profiles",filter:`user_id=eq.${user.id}`},()=>load()).subscribe()}catch(e){tampilModal("Gagal memuat profil: "+e.message)}
 })();
-
-window.addEventListener("offline",()=>updateOfflineUI(true));
-window.addEventListener("online",async()=>{if(!user||sb?.__offlineFallback)return;try{await syncOffline();profil=null;await load()}catch{updateOfflineUI(true)}});
-window.addEventListener("studentplanner:offlinequeue",()=>updateOfflineUI(!cloudReady()));
