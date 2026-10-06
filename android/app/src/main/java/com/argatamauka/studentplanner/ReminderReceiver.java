@@ -41,6 +41,10 @@ public class ReminderReceiver extends BroadcastReceiver {
             builder = new Notification.Builder(context);
         }
 
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            builder.setDefaults(Notification.DEFAULT_SOUND);
+        }
+
         Notification notification = builder
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title == null ? "Student Planner" : title)
@@ -53,5 +57,7 @@ public class ReminderReceiver extends BroadcastReceiver {
 
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager != null) manager.notify(id, notification);
+
+        ReminderScheduler.rescheduleWeekly(context, intent);
     }
 }
