@@ -52,6 +52,14 @@ panel.classList.toggle("hidden",!open);
 btn.setAttribute("aria-expanded",String(open));
 btn.querySelector("span:first-child").innerText=open?"TUTUP PENGATURAN":"ATUR NOTIFIKASI";
 }
+function tampilkanKontrolNotifikasiAndroid(){
+let native=false;
+try{
+native=!!(window.AndroidNotifications&&typeof window.AndroidNotifications.syncReminders==="function");
+}catch{}
+$("android-notification-card")?.classList.toggle("hidden",!native);
+}
+
 function notifKey(){return "studentPlannerNotificationPrefs:"+(user?.id||"guest")}
 function defaultNotifPrefs(){return{enabled:false,schedule:true,scheduleMinutes:30,tasks:true,taskDays:1,taskHour:19}}
 function getNotifPrefs(){
