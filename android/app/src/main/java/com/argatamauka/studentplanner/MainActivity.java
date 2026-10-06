@@ -37,7 +37,6 @@ import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
-import android.webkit.WebResourceResponse;
 import android.webkit.WebResourceError;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -54,11 +53,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import androidx.webkit.WebViewAssetLoader;
 
 public class MainActivity extends Activity {
     private static final String APP_URL = "https://studentplannerarga.vercel.app/";
-    private static final String LOCAL_APP_URL = "https://studentplannerarga.vercel.app/__offline__/index.html";
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private static final int NOTIFICATION_PERMISSION_REQUEST = 1002;
     private static final String UPDATE_PREFS = "student_planner_updates";
@@ -66,7 +63,8 @@ public class MainActivity extends Activity {
     private static final String UPDATE_VERSION = "version";
 
     private WebView webView;
-    private WebViewAssetLoader assetLoader;
+    private FrameLayout appRoot;
+    private LinearLayout internetRequiredScreen;
     private ValueCallback<Uri[]> fileCallback;
     private BroadcastReceiver updateDownloadReceiver;
     private boolean updateSettingsRequested = false;
@@ -100,11 +98,18 @@ public class MainActivity extends Activity {
         registerUpdateReceiver();
 
         webView = new WebView(this);
-        assetLoader = new WebViewAssetLoader.Builder()
-            .setDomain("studentplannerarga.vercel.app")
-            .addPathHandler("/__offline__/", new WebViewAssetLoader.AssetsPathHandler(this))
-            .build();
-        setContentView(webView);
+        appRoot = new FrameLayout(this);
+        appRoot.addView(webView, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+        internetRequiredScreen = buildInternetRequiredScreen();
+        internetRequiredScreen.setVisibility(View.GONE);
+        appRoot.addView(internetRequiredScreen, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+        setContentView(appRoot);
 
         CookieManager cookies = CookieManager.getInstance();
         cookies.setAcceptCookie(true);
@@ -117,17 +122,11 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.3.1");
+        settings.setUserAgentString(settings.getUserAgentString() + " StudentPlannerAndroid/2.3.2");
 
         webView.addJavascriptInterface(new NotificationBridge(), "AndroidNotifications");
 
         webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                WebResourceResponse local = assetLoader.shouldInterceptRequest(request.getUrl());
-                return local != null ? local : super.shouldInterceptRequest(view, request);
-            }
-
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 Uri uri = request.getUrl();
@@ -147,31 +146,24 @@ public class MainActivity extends Activity {
                     WebResourceRequest request,
                     WebResourceError error) {
                 super.onReceivedError(view, request, error);
-                Uri uri = request.getUrl();
-                String path = uri != null ? uri.getPath() : "";
-                boolean productionResource = uri != null
-                    && "studentplannerarga.vercel.app".equalsIgnoreCase(uri.getHost())
-                    && (path == null || !path.startsWith("/__offline__/"));
-
-                if (productionResource && !hasUsableNetwork()) {
-                    view.post(() -> {
-                        if (!isOfflineBundleUrl(view.getUrl())) view.loadUrl(LOCAL_APP_URL);
-                    });
+                if (request.isForMainFrame() && !hasUsableNetwork()) {
+                    showInternetRequired();
                 }
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                if (!hasUsableNetwork() && !isOfflineBundleUrl(url)) {
-                    view.loadUrl(LOCAL_APP_URL);
+                if (!hasUsableNetwork()) {
+                    showInternetRequired();
                     return;
                 }
+                hideInternetRequired();
                 injectNativeAboutButton();
             }
         });
 
-                webView.setWebChromeClient(new WebChromeClient() {
+        webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(
                     WebView webView,
@@ -193,15 +185,15 @@ public class MainActivity extends Activity {
         });
 
         if (savedInstanceState == null) {
-            webView.loadUrl(hasUsableNetwork() ? APP_URL : LOCAL_APP_URL);
+            if (hasUsableNetwork()) {
+                hideInternetRequired();
+                webView.loadUrl(APP_URL);
+            } else {
+                showInternetRequired();
+            }
         } else {
             webView.restoreState(savedInstanceState);
-            if (!hasUsableNetwork()) {
-                webView.post(() -> {
-                    String current = webView.getUrl();
-                    if (!isOfflineBundleUrl(current)) webView.loadUrl(LOCAL_APP_URL);
-                });
-            }
+            if (!hasUsableNetwork()) showInternetRequired();
         }
     }
 
@@ -291,17 +283,92 @@ public class MainActivity extends Activity {
         }
     }
 
-    private boolean isOfflineBundleUrl(String url) {
-        if (url == null) return false;
-        try {
-            Uri uri = Uri.parse(url);
-            String path = uri.getPath();
-            return "studentplannerarga.vercel.app".equalsIgnoreCase(uri.getHost())
-                && path != null
-                && path.startsWith("/__offline__/");
-        } catch (Exception ignored) {
-            return false;
+    private LinearLayout buildInternetRequiredScreen() {
+        LinearLayout screen = new LinearLayout(this);
+        screen.setOrientation(LinearLayout.VERTICAL);
+        screen.setGravity(Gravity.CENTER);
+        screen.setPadding(dp(22), dp(22), dp(22), dp(22));
+        screen.setBackgroundColor(Color.parseColor("#F4F0E6"));
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(20), dp(20), dp(20), dp(20));
+        card.setBackground(neoBox("#FFFFFF", 4, 12));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) card.setElevation(dp(6));
+
+        TextView badge = new TextView(this);
+        badge.setText(" KONEKSI INTERNET ");
+        badge.setTextSize(10);
+        badge.setTextColor(Color.BLACK);
+        badge.setTypeface(null, android.graphics.Typeface.BOLD);
+        badge.setGravity(Gravity.CENTER);
+        badge.setPadding(dp(8), dp(5), dp(8), dp(5));
+        badge.setBackground(neoBox("#FDE047", 2, 999));
+        card.addView(badge, new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
+
+        TextView title = new TextView(this);
+        title.setText("HARAP HUBUNGKAN\nKE INTERNET");
+        title.setTextSize(24);
+        title.setTextColor(Color.BLACK);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        titleParams.topMargin = dp(14);
+        card.addView(title, titleParams);
+
+        TextView message = new TextView(this);
+        message.setText("Student Planner membutuhkan koneksi internet untuk memuat dan menyinkronkan data.");
+        message.setTextSize(12);
+        message.setTextColor(Color.DKGRAY);
+        LinearLayout.LayoutParams messageParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        messageParams.topMargin = dp(8);
+        card.addView(message, messageParams);
+
+        Button refresh = new Button(this);
+        refresh.setText("REFRESH");
+        styleNeoButton(refresh, "#4ADE80", "#000000");
+        refresh.setOnClickListener(v -> retryInternetConnection());
+        LinearLayout.LayoutParams refreshParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        refreshParams.topMargin = dp(16);
+        card.addView(refresh, refreshParams);
+
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        cardParams.setMargins(dp(4), 0, dp(4), 0);
+        screen.addView(card, cardParams);
+        return screen;
+    }
+
+    private void showInternetRequired() {
+        if (internetRequiredScreen != null) internetRequiredScreen.setVisibility(View.VISIBLE);
+        if (webView != null) webView.setVisibility(View.INVISIBLE);
+    }
+
+    private void hideInternetRequired() {
+        if (internetRequiredScreen != null) internetRequiredScreen.setVisibility(View.GONE);
+        if (webView != null) webView.setVisibility(View.VISIBLE);
+    }
+
+    private void retryInternetConnection() {
+        if (!hasUsableNetwork()) {
+            Toast.makeText(this, "Belum ada koneksi internet.", Toast.LENGTH_SHORT).show();
+            return;
         }
+        hideInternetRequired();
+        webView.loadUrl(APP_URL);
     }
 
     private void registerUpdateReceiver() {
@@ -865,7 +932,7 @@ public class MainActivity extends Activity {
         changeCard.addView(changeTitle);
 
         TextView changelog = new TextView(this);
-        changelog.setText("• Perbaikan tampilan mode offline\n• CSS dan UI kini dimuat langsung dari APK\n• Sinkron otomatis saat internet kembali");
+        changelog.setText("• Koneksi internet wajib untuk menggunakan planner\n• Tampilan khusus saat perangkat offline\n• Tombol REFRESH untuk mencoba kembali");
         changelog.setTextSize(11);
         changelog.setTextColor(Color.BLACK);
         LinearLayout.LayoutParams changelogParams = new LinearLayout.LayoutParams(
