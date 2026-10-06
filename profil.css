@@ -123,29 +123,6 @@ body{padding:calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-ins
 
 
 /* ABOUT APP */
-.about-card{padding:16px;margin:22px 0 18px;border:4px solid #000;border-radius:12px;background:#fff;box-shadow:5px 5px 0 #000}
-.about-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-bottom:10px;margin-bottom:12px;border-bottom:3px solid #000}
-.about-head h2{margin:2px 0 0;font-size:1.15rem}
-.about-badge{padding:4px 7px;border:2px solid #000;border-radius:999px;background:var(--green);font-size:9px;font-weight:700}
-.about-version-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
-.about-version-grid>div{padding:10px;border:3px solid #000;border-radius:8px;background:var(--yellow)}
-.about-version-grid small{display:block;margin-bottom:3px}
-.about-version-grid strong{display:block;font-size:1.15rem}
-.about-developer{padding:10px;margin-bottom:12px;border:3px solid #000;border-radius:8px;background:var(--blue)}
-.about-developer small,.about-developer strong,.about-developer span{display:block}
-.about-developer strong{margin:3px 0;font-size:12px}
-.about-developer span{font-size:10px;font-weight:700;opacity:.7}
-.about-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.about-actions button{padding:10px;border:3px solid #000;border-radius:7px;box-shadow:3px 3px 0 #000;font:inherit;font-size:10px;font-weight:700;cursor:pointer}
-.about-check-btn{background:#fff}
-.about-download-btn{background:#000;color:#fff}
-.about-actions button:active{transform:translate(3px,3px);box-shadow:none}
-.about-actions button:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:3px 3px 0 #000}
-.about-update-status{margin:10px 0 0;font-size:10px;font-weight:700;line-height:1.45;opacity:.7}
-.about-changelog{margin-top:12px;padding-top:12px;border-top:3px dashed #000}
-.about-changelog ul{margin:7px 0 0;padding-left:18px}
-.about-changelog li{margin:5px 0;font-size:10px;font-weight:700;line-height:1.45}
-@media(max-width:430px){.about-version-grid,.about-actions{grid-template-columns:1fr}}
 
 
 /* PROFILE UX POLISH */
@@ -153,7 +130,4 @@ button,a,input,select,textarea{touch-action:manipulation}
 button:disabled{opacity:.55;cursor:not-allowed;transform:none!important}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #000;outline-offset:3px}
 .modal-card{max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain}
-.about-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
-.about-feedback-btn{grid-column:1/-1;background:var(--pink);color:#000}
-@media(max-width:699px){input,select,textarea{font-size:16px}.about-actions{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
