@@ -2,7 +2,7 @@ plugins {
     id 'com.android.application'
 }
 
-// permanent-release-trigger: 2.3.2
+// permanent-release-trigger: 2.3.3
 
 def releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
 def hasReleaseSigning = releaseKeystorePath != null && !releaseKeystorePath.isBlank()
@@ -15,8 +15,8 @@ android {
         applicationId "com.argatamauka.studentplanner"
         minSdk 24
         targetSdk 35
-        versionCode 18
-        versionName "2.3.2"
+        versionCode 19
+        versionName "2.3.3"
     }
 
     signingConfigs {
