@@ -352,7 +352,7 @@ q(sb.from("savings").select("*").maybeSingle())
 if(!w.length){await q(sb.from("wallets").insert({user_id:user.id,name:"Tunai",balance:0}));return loadFinance()}
 wallets=w.map(x=>({...x,balance:Number(x.balance)}));
 if(!wallets.some(x=>x.id===dompetAktifId))dompetAktifId=wallets[0].id;
-transaksi=t.map(x=>({id:x.id,wallet_id:x.wallet_id,dompet:x.wallet_name,nominal:Number(x.amount),tipe:x.type,kategori:x.category,tanggal:x.tx_date}));
+transaksi=t.map(x=>({id:x.id,wallet_id:x.wallet_id,dompet:x.wallet_name,nama:x.transaction_name||"",nominal:Number(x.amount),tipe:x.type,kategori:x.category,tanggal:x.tx_date}));
 if(!s){await q(sb.from("savings").insert({user_id:user.id}));saving={target_name:"",target_amount:0,amount:0}}
 else saving={target_name:s.target_name||"",target_amount:Number(s.target_amount||0),amount:Number(s.amount||0)};
 renderDompet();renderTransaksi();renderTabungan();
@@ -440,19 +440,25 @@ let w=walletAktif();confirmBox(`Hapus dompet "${w.name}" dengan saldo ${rupiah(w
 
 /* TRANSAKSI */
 function formatTanggalTransaksi(t){return new Date(t+"T00:00:00").toLocaleDateString("id-ID",{day:"2-digit",month:"short",year:"numeric"})}
-function resetFormTransaksi(){editTransaksi=null;$("nominal-uang").value="";$("tanggal-transaksi").value="";$("tipe-uang").value="keluar";$("kategori-uang").selectedIndex=0;$("simpan-transaksi").innerText="SIMPAN TRANSAKSI";$("batal-edit-transaksi").classList.add("hidden");$("transaksi-dompet-info").classList.add("hidden")}
+function updateTransaksiNamePlaceholder(){
+let el=$("nama-transaksi");if(!el)return;
+el.placeholder=$("tipe-uang").value==="masuk"?"Nama pemasukan":"Nama pengeluaran";
+}
+function resetFormTransaksi(){editTransaksi=null;$("nama-transaksi").value="";$("nominal-uang").value="";$("tanggal-transaksi").value="";$("tipe-uang").value="keluar";$("kategori-uang").selectedIndex=0;updateTransaksiNamePlaceholder();$("simpan-transaksi").innerText="SIMPAN TRANSAKSI";$("batal-edit-transaksi").classList.add("hidden");$("transaksi-dompet-info").classList.add("hidden")}
 function bukaTambahTransaksi(){toggleTambah("form-transaksi",resetFormTransaksi)}
 function bukaEditTransaksi(i){
 let t=transaksi[i];if(!t.wallet_id||!wallets.some(w=>w.id===t.wallet_id))return info(`Dompet "${t.dompet}" sudah dihapus, jadi transaksi ini tidak bisa diedit.`);
-editTransaksi=i;$("nominal-uang").value=t.nominal;$("tipe-uang").value=t.tipe;$("kategori-uang").value=t.kategori;$("tanggal-transaksi").value=t.tanggal;$("simpan-transaksi").innerText="SIMPAN PERUBAHAN";$("batal-edit-transaksi").classList.remove("hidden");$("transaksi-dompet-info").innerText=`DOMPET: ${t.dompet}`;$("transaksi-dompet-info").classList.remove("hidden");$("form-transaksi").classList.remove("hidden");$("form-transaksi").scrollIntoView({behavior:"smooth",block:"nearest"});
+editTransaksi=i;$("nama-transaksi").value=t.nama||"";$("nominal-uang").value=t.nominal;$("tipe-uang").value=t.tipe;updateTransaksiNamePlaceholder();$("kategori-uang").value=t.kategori;$("tanggal-transaksi").value=t.tanggal;$("simpan-transaksi").innerText="SIMPAN PERUBAHAN";$("batal-edit-transaksi").classList.remove("hidden");$("transaksi-dompet-info").innerText=`DOMPET: ${t.dompet}`;$("transaksi-dompet-info").classList.remove("hidden");$("form-transaksi").classList.remove("hidden");$("form-transaksi").scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 function batalEditTransaksi(){resetFormTransaksi();$("form-transaksi").classList.add("hidden")}
 async function simpanTransaksi(){
-let nominal=Number($("nominal-uang").value),tipe=$("tipe-uang").value,kategori=$("kategori-uang").value,tanggal=$("tanggal-transaksi").value;
+let nama=$("nama-transaksi").value.trim(),nominal=Number($("nominal-uang").value),tipe=$("tipe-uang").value,kategori=$("kategori-uang").value,tanggal=$("tanggal-transaksi").value;
+if(!nama)return info(tipe==="keluar"?"Masukkan nama pengeluaran.":"Masukkan nama pemasukan.");
+if(nama.length>120)return info("Nama transaksi maksimal 120 karakter.");
 if(!nominal||nominal<=0)return info("Masukkan nominal transaksi yang valid.");if(!tanggal)return info("Pilih tanggal transaksi terlebih dahulu.");
 let run=async()=>{try{
-if(editTransaksi===null)await q(sb.rpc("record_transaction",{p_wallet_id:dompetAktifId,p_amount:nominal,p_type:tipe,p_category:kategori,p_tx_date:tanggal}));
-else await q(sb.rpc("update_transaction",{p_transaction_id:transaksi[editTransaksi].id,p_amount:nominal,p_type:tipe,p_category:kategori,p_tx_date:tanggal}));
+if(editTransaksi===null)await q(sb.rpc("record_transaction_v2",{p_wallet_id:dompetAktifId,p_amount:nominal,p_type:tipe,p_category:kategori,p_tx_date:tanggal,p_transaction_name:nama}));
+else await q(sb.rpc("update_transaction_v2",{p_transaction_id:transaksi[editTransaksi].id,p_amount:nominal,p_type:tipe,p_category:kategori,p_tx_date:tanggal,p_transaction_name:nama}));
 resetFormTransaksi();$("form-transaksi").classList.add("hidden");await loadFinance();
 }catch(e){info(e.message)}};
 if(editTransaksi===null&&tipe==="keluar"&&(walletAktif()?.balance||0)<nominal)return confirmBox("Saldo tidak cukup. Tetap catat hingga saldo menjadi minus?",run,"TETAP CATAT");
@@ -463,8 +469,8 @@ if(saldoDasar<nominal)return confirmBox("Perubahan ini membuat saldo dompet menj
 run();
 }
 function hapusTransaksi(i){
-let t=transaksi[i],ada=t.wallet_id&&wallets.some(w=>w.id===t.wallet_id);
-let pesan=ada?`Hapus transaksi ${t.kategori} ${rupiah(t.nominal)}? Saldo ${t.dompet} akan dikoreksi otomatis.`:`Hapus transaksi ${t.kategori} ${rupiah(t.nominal)}? Hanya riwayat yang dihapus karena dompet sudah tidak ada.`;
+let t=transaksi[i],ada=t.wallet_id&&wallets.some(w=>w.id===t.wallet_id),label=t.nama||t.kategori;
+let pesan=ada?`Hapus transaksi "${label}" ${rupiah(t.nominal)}? Saldo ${t.dompet} akan dikoreksi otomatis.`:`Hapus transaksi "${label}" ${rupiah(t.nominal)}? Hanya riwayat yang dihapus karena dompet sudah tidak ada.`;
 confirmBox(pesan,async()=>{try{await q(sb.rpc("delete_transaction",{p_transaction_id:t.id}));batalEditTransaksi();await loadFinance()}catch(e){info(e.message)}},"HAPUS");
 }
 function setFilterTransaksi(f){filterTransaksi=f;renderTransaksi()}
@@ -472,7 +478,7 @@ function renderTransaksi(){
 let masuk=transaksi.filter(x=>x.tipe==="masuk").reduce((a,b)=>a+b.nominal,0),keluar=transaksi.filter(x=>x.tipe==="keluar").reduce((a,b)=>a+b.nominal,0);
 $("total-masuk").innerText=rupiah(masuk);$("total-keluar").innerText=rupiah(keluar);["semua","masuk","keluar"].forEach(f=>$("filter-"+f).classList.toggle("active",filterTransaksi===f));
 let d=transaksi.map((x,i)=>({...x,index:i})).filter(x=>filterTransaksi==="semua"||x.tipe===filterTransaksi);
-$("daftar-riwayat").innerHTML=d.length?d.map(x=>`<div class="history-row"><div class="history-info"><strong>${aman(x.kategori)}</strong><small>${aman(x.dompet)} • ${formatTanggalTransaksi(x.tanggal)}</small></div><div class="history-side"><span class="amount ${x.tipe==="masuk"?"in":""}">${x.tipe==="masuk"?"+":"-"}${rupiah(x.nominal)}</span><div class="history-actions"><button class="edit-small" onclick="bukaEditTransaksi(${x.index})">EDIT</button><button class="delete" onclick="hapusTransaksi(${x.index})">X</button></div></div></div>`).join(""):`<div class="empty"><strong>${filterTransaksi==="semua"?"Belum ada transaksi.":`Belum ada transaksi ${filterTransaksi}.`}</strong><span>Catat pemasukan atau pengeluaran supaya saldo dan riwayatmu tetap rapi.</span></div>`;
+$("daftar-riwayat").innerHTML=d.length?d.map(x=>{let judul=x.nama||x.kategori,meta=x.nama?`${aman(x.kategori)} • ${aman(x.dompet)} • ${formatTanggalTransaksi(x.tanggal)}`:`${aman(x.dompet)} • ${formatTanggalTransaksi(x.tanggal)}`;return `<div class="history-row"><div class="history-info"><strong>${aman(judul)}</strong><small>${meta}</small></div><div class="history-side"><span class="amount ${x.tipe==="masuk"?"in":""}">${x.tipe==="masuk"?"+":"-"}${rupiah(x.nominal)}</span><div class="history-actions"><button class="edit-small" onclick="bukaEditTransaksi(${x.index})">EDIT</button><button class="delete" onclick="hapusTransaksi(${x.index})">X</button></div></div></div>`}).join(""):`<div class="empty"><strong>${filterTransaksi==="semua"?"Belum ada transaksi.":`Belum ada transaksi ${filterTransaksi}.`}</strong><span>Catat pemasukan atau pengeluaran supaya saldo dan riwayatmu tetap rapi.</span></div>`;
 }
 
 /* TABUNGAN */
