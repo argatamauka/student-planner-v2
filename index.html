@@ -142,8 +142,9 @@
 
 <div id="form-transaksi" class="panel hidden">
 <span id="transaksi-dompet-info" class="transaction-wallet hidden"></span>
+<input id="nama-transaksi" type="text" maxlength="120" placeholder="Nama pengeluaran">
 <input id="nominal-uang" type="number" placeholder="Jumlah Rp">
-<select id="tipe-uang">
+<select id="tipe-uang" onchange="updateTransaksiNamePlaceholder()">
 <option value="keluar">Keluar</option>
 <option value="masuk">Masuk</option>
 </select>
