@@ -97,7 +97,10 @@
 
 <div id="form-tugas" class="panel hidden">
 <input id="input-tugas" placeholder="Nama tugas">
-<input id="input-matkul-tugas" placeholder="Mata kuliah">
+<select id="input-matkul-tugas" aria-label="Pilih mata kuliah">
+<option value="">PILIH MATA KULIAH</option>
+</select>
+<p id="matkul-tugas-empty" class="task-course-empty hidden">Belum ada mata kuliah. <a href="matakuliah.html">+ TAMBAH MATA KULIAH</a> terlebih dahulu.</p>
 <input id="input-deadline" type="date">
 <button id="simpan-tugas" class="dark" onclick="simpanTugas()">SIMPAN</button>
 <button id="batal-edit-tugas" class="cancel-edit hidden" onclick="batalEditTugas()">BATAL EDIT</button>
