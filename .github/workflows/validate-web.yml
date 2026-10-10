@@ -10,6 +10,14 @@ on:
       - "*.css"
       - "manifest.webmanifest"
       - ".github/workflows/validate-web.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "*.js"
+      - "*.html"
+      - "*.css"
+      - ".github/workflows/validate-web.yml"
   workflow_dispatch:
 
 permissions:
@@ -25,6 +33,7 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check script.js
+          node --check assistant.js
           node --check matakuliah.js
           node --check profil.js
           node --check pwa.js
@@ -33,6 +42,8 @@ jobs:
       - name: Check required PWA files
         run: |
           test -f index.html
+          test -f assistant.html
+          test -f assistant.css
           test -f manifest.webmanifest
           test -f sw.js
           test -f app-icon.svg
