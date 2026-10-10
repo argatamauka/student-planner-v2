@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#fde047">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Asisten Pribadi — Student Planner</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="app-icon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assistant.css">
+</head>
+<body>
+<div class="app-shell" id="assistant-app">
+  <header class="topbar">
+    <a class="back-link" href="index.html" aria-label="Kembali ke beranda">← BERANDA</a>
+    <span class="top-brand">STUDENT PLANNER <span class="version">V2</span></span>
+  </header>
+
+  <main>
+    <section class="hero panel-yellow" aria-labelledby="hero-title">
+      <div class="hero-top"><span class="eyebrow">✦ PUSAT OTOMATISASI</span><span class="hero-stamp" aria-hidden="true">AI<span>.</span></span></div>
+      <p class="date-line" id="today-date">MEMUAT TANGGAL...</p>
+      <h1 id="hero-title">ASISTEN<br>PRIBADI<span class="dot">.</span></h1>
+      <p id="greeting">Menyusun ringkasan dari data Student Planner kamu.</p>
+      <div class="hero-actions">
+        <button type="button" id="refresh-btn" class="solid-btn">↻ PERBARUI RINGKASAN</button>
+        <span class="status-pill" id="sync-status" role="status">MENYIAPKAN...</span>
+      </div>
+    </section>
+
+    <div id="error-banner" class="message error-message hidden" role="alert"></div>
+    <div id="day-note" class="message sabbath-message hidden" role="status">🙏 SABTU — Utamakan ibadah dan istirahat. Asisten tidak akan menyarankan sesi belajar terjadwal hari ini.</div>
+
+    <section class="stats" aria-label="Ringkasan angka hari ini">
+      <div class="stat"><span>KELAS HARI INI</span><strong id="count-classes">—</strong><small>Dari jadwal yang tercatat</small></div>
+      <div class="stat"><span>TUGAS AKTIF</span><strong id="count-tasks">—</strong><small>Belum diselesaikan</small></div>
+      <div class="stat"><span>DEADLINE DEKAT</span><strong id="count-urgent">—</strong><small>Hari ini sampai 3 hari</small></div>
+    </section>
+
+    <div class="content-grid">
+      <section id="prioritas" class="feature-card panel-blue" aria-labelledby="tasks-title">
+        <div class="section-heading">
+          <div><span class="eyebrow">01 / AKADEMIK</span><h2 id="tasks-title">PRIORITAS TUGAS</h2></div>
+          <span class="sticker">!</span>
+        </div>
+        <p class="description">Tugas diurutkan berdasarkan deadline. Tugas yang terlambat ditampilkan lebih dulu.</p>
+        <div id="task-list" class="list" aria-live="polite"><p class="empty">Memuat tugas...</p></div>
+        <a class="text-link" href="index.html">KELOLA TUGAS DI BERANDA ↗</a>
+      </section>
+
+      <section id="kuliah" class="feature-card panel-green" aria-labelledby="schedule-title">
+        <div class="section-heading">
+          <div><span class="eyebrow">02 / JADWAL</span><h2 id="schedule-title">KULIAH HARI INI</h2></div>
+          <span class="sticker">↗</span>
+        </div>
+        <p id="schedule-note" class="description">Diperbarui mengikuti jadwal yang tersimpan.</p>
+        <div id="schedule-list" class="list" aria-live="polite"><p class="empty">Memuat jadwal...</p></div>
+        <a class="text-link" href="matakuliah.html">LIHAT MATA KULIAH ↗</a>
+      </section>
+
+      <section id="keuangan" class="feature-card panel-pink" aria-labelledby="finance-title">
+        <div class="section-heading">
+          <div><span class="eyebrow">03 / KEUANGAN</span><h2 id="finance-title">UANG MINGGU INI</h2></div>
+          <span class="sticker">Rp</span>
+        </div>
+        <div class="money-grid">
+          <div class="money-box"><small>PENGELUARAN</small><strong id="week-expense">—</strong></div>
+          <div class="money-box"><small>PEMASUKAN</small><strong id="week-income">—</strong></div>
+        </div>
+        <p id="finance-note" class="finance-note">Memuat ringkasan transaksi...</p>
+        <div class="savings-box">
+          <div class="progress-heading"><span>TARGET TABUNGAN</span><strong id="saving-percent">—</strong></div>
+          <div class="progress-track" role="progressbar" aria-label="Kemajuan target tabungan" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="saving-progress"><div id="saving-fill"></div></div>
+          <p id="saving-note" class="description">Memuat target tabungan...</p>
+        </div>
+        <a class="text-link" href="index.html">BUKA KEUANGAN ↗</a>
+      </section>
+
+      <section id="saran" class="feature-card panel-orange" aria-labelledby="insight-title">
+        <div class="section-heading">
+          <div><span class="eyebrow">04 / SARAN OTOMATIS</span><h2 id="insight-title">PESAN ASISTEN</h2></div>
+          <span class="sticker">✦</span>
+        </div>
+        <p class="description">Saran dibuat dari data yang tersedia, bukan informasi yang ditebak.</p>
+        <div id="insight-list" class="insights" aria-live="polite"><p class="empty">Menyiapkan saran...</p></div>
+      </section>
+    </div>
+
+    <section id="pengaturan" class="settings-card" aria-labelledby="settings-title">
+      <div class="section-heading"><div><span class="eyebrow">KONTROL PENGGUNA</span><h2 id="settings-title">PENGATURAN ASISTEN</h2></div><span class="sticker">⚙</span></div>
+      <label class="setting-row" for="sabbath-mode">
+        <span><strong>FOKUS HARI SABTU</strong><small>Prioritaskan pesan ibadah pada hari Sabtu</small></span>
+        <input type="checkbox" id="sabbath-mode" checked>
+      </label>
+      <label class="setting-row" for="finance-visible">
+        <span><strong>TAMPILKAN RINGKASAN KEUANGAN</strong><small>Menampilkan atau menyembunyikan kartu keuangan</small></span>
+        <input type="checkbox" id="finance-visible" checked>
+      </label>
+      <label class="setting-row" for="task-limit">
+        <span><strong>JUMLAH PRIORITAS</strong><small>Banyak tugas yang ditampilkan dalam daftar</small></span>
+        <select id="task-limit" aria-label="Jumlah prioritas tugas">
+          <option value="3">3 tugas</option>
+          <option value="5" selected>5 tugas</option>
+          <option value="10">10 tugas</option>
+        </select>
+      </label>
+      <p class="settings-hint">Preferensi tersimpan di perangkat ini. Pengingat jadwal dan deadline tetap diatur melalui menu Profil Student Planner. Notifikasi ringkasan terjadwal akan dikembangkan pada tahap berikutnya.</p>
+    </section>
+  </main>
+
+  <footer><span>STUDENT PLANNER / ASISTEN V1</span><span>NEOBRUTALISM ✦</span></footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
+<script src="assistant.js"></script>
+</body>
+</html>
