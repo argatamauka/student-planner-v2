@@ -271,7 +271,7 @@ finally{setLoading(false)}
 
 /* DATA */
 const hariUrut=["Senin","Selasa","Rabu","Kamis","Jumat"],namaHari=["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"],hariIni=()=>namaHari[new Date().getDay()];
-let jadwal=[],tugas=[],wallets=[],transaksi=[],saving={target_name:"",target_amount:0,amount:0},dompetAktifId=null;
+let jadwal=[],tugas=[],mataKuliahTugas=[],wallets=[],transaksi=[],saving={target_name:"",target_amount:0,amount:0},dompetAktifId=null;
 let editJadwal=null,editTugas=null,editTransaksi=null,filterTransaksi="semua";
 
 async function migrasiLokal(){
@@ -334,7 +334,7 @@ localStorage.setItem(key,"1");
 if(!notificationPrefs().enabled)info("🔔 Pengingat jadwal dan deadline sudah tersedia. Aktifkan dari menu PROFIL.");
 }catch{}
 }
-async function loadDashboard(){await Promise.all([loadJadwal(),loadTugas(),loadFinance()]);renderSemua();syncAndroidReminders()}
+async function loadDashboard(){await Promise.all([loadJadwal(),loadTugas(),loadMataKuliahTugas(),loadFinance()]);renderSemua();syncAndroidReminders()}
 async function loadJadwal(){
 let d=await q(sb.from("schedules").select("*"));
 jadwal=d.map(x=>({id:x.id,hari:x.day,matkul:x.course_name,waktu:x.time_range,ruangan:x.room||""}));
@@ -342,6 +342,39 @@ jadwal=d.map(x=>({id:x.id,hari:x.day,matkul:x.course_name,waktu:x.time_range,rua
 async function loadTugas(){
 let d=await q(sb.from("tasks").select("*"));
 tugas=d.map(x=>({id:x.id,nama:x.name,matkul:x.course_name,deadline:x.deadline,selesai:x.completed}));
+}
+async function loadMataKuliahTugas(){
+let data=await q(sb.from("courses").select("name").order("name"));
+const unik=new Map();
+for(const item of data){
+const nama=String(item.name||"").trim();
+const key=nama.toLocaleLowerCase("id-ID");
+if(nama&&!unik.has(key))unik.set(key,nama);
+}
+mataKuliahTugas=[...unik.values()].sort((a,b)=>a.localeCompare(b,"id-ID"));
+renderPilihanMatkulTugas();
+}
+function renderPilihanMatkulTugas(){
+const select=$("input-matkul-tugas");
+if(!select)return;
+let terpilih=select.value;
+if(editTugas!==null&&tugas[editTugas])terpilih=terpilih||tugas[editTugas].matkul;
+select.innerHTML='<option value="">PILIH MATA KULIAH</option>';
+for(const nama of mataKuliahTugas){
+const option=document.createElement("option");
+option.value=nama;
+option.textContent=nama;
+select.appendChild(option);
+}
+// Preserve existing task data even when its course is no longer in the course list.
+if(terpilih&&!mataKuliahTugas.includes(terpilih)&&editTugas!==null){
+const option=document.createElement("option");
+option.value=terpilih;
+option.textContent=terpilih+" (tersimpan sebelumnya)";
+select.appendChild(option);
+}
+select.value=terpilih&&[...select.options].some(x=>x.value===terpilih)?terpilih:"";
+$("matkul-tugas-empty")?.classList.toggle("hidden",mataKuliahTugas.length!==0);
 }
 async function loadFinance(){
 let [w,t,s]=await Promise.all([
@@ -362,6 +395,7 @@ if(rt)return;
 let refresh=()=>{clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>loadDashboard().catch(e=>info(e.message)),250)};
 rt=sb.channel("student-planner-"+user.id);
 ["schedules","tasks","wallets","transactions","savings"].forEach(table=>rt.on("postgres_changes",{event:"*",schema:"public",table,filter:`user_id=eq.${user.id}`},refresh));
+rt.on("postgres_changes",{event:"*",schema:"public",table:"courses",filter:`user_id=eq.${user.id}`},()=>loadMataKuliahTugas().catch(e=>info("Gagal memperbarui pilihan mata kuliah: "+e.message)));
 rt.on("postgres_changes",{event:"*",schema:"public",table:"profiles",filter:`user_id=eq.${user.id}`},()=>loadIdentitas().catch(()=>{}));
 rt.subscribe();
 }
@@ -403,13 +437,25 @@ $("count-tugas").innerText=$("summary-tugas").innerText=aktif.length;$("count-se
 $("tugas-ringkas").innerHTML=aktif.length?aktif.map(x=>htmlTugas(x,x.index)).join(""):`<div class="empty"><strong>Belum ada tugas aktif 🎉</strong><span>Tambahkan tugas baru supaya deadline tetap terpantau.</span><button class="empty-action" onclick="bukaTambahTugas()">+ TAMBAH TUGAS</button></div>`;
 $("tugas-selesai-list").innerHTML=selesai.length?selesai.map(x=>htmlTugas(x,x.index)).join(""):`<div class="empty">Belum ada tugas selesai.</div>`;
 }
-function resetFormTugas(){editTugas=null;["input-tugas","input-matkul-tugas","input-deadline"].forEach(id=>$(id).value="");$("simpan-tugas").innerText="SIMPAN";$("batal-edit-tugas").classList.add("hidden")}
-function bukaTambahTugas(){toggleTambah("form-tugas",resetFormTugas)}
-function bukaEditTugas(i){let t=tugas[i];editTugas=i;$("input-tugas").value=t.nama;$("input-matkul-tugas").value=t.matkul;$("input-deadline").value=t.deadline;$("simpan-tugas").innerText="SIMPAN PERUBAHAN";$("batal-edit-tugas").classList.remove("hidden");$("form-tugas").classList.remove("hidden");$("form-tugas").scrollIntoView({behavior:"smooth",block:"nearest"})}
+function resetFormTugas(){editTugas=null;["input-tugas","input-deadline"].forEach(id=>$(id).value="");$("input-matkul-tugas").value="";$("simpan-tugas").innerText="SIMPAN";$("batal-edit-tugas").classList.add("hidden")}
+function bukaTambahTugas(){toggleTambah("form-tugas",resetFormTugas);if(!$("form-tugas").classList.contains("hidden"))renderPilihanMatkulTugas()}
+function bukaEditTugas(i){
+let t=tugas[i];editTugas=i;
+$("input-tugas").value=t.nama;
+$("input-matkul-tugas").value="";
+renderPilihanMatkulTugas();
+$("input-deadline").value=t.deadline;
+$("simpan-tugas").innerText="SIMPAN PERUBAHAN";
+$("batal-edit-tugas").classList.remove("hidden");
+$("form-tugas").classList.remove("hidden");
+$("form-tugas").scrollIntoView({behavior:"smooth",block:"nearest"});
+}
 function batalEditTugas(){resetFormTugas();$("form-tugas").classList.add("hidden")}
 async function simpanTugas(){
-let nama=$("input-tugas").value.trim(),matkul=$("input-matkul-tugas").value.trim(),deadline=$("input-deadline").value;
-if(!nama||!matkul||!deadline)return info("Isi nama tugas, mata kuliah, dan deadline.");
+let nama=$("input-tugas").value.trim(),matkul=$("input-matkul-tugas").value,deadline=$("input-deadline").value;
+if(!mataKuliahTugas.length&&editTugas===null)return info("Belum ada mata kuliah. Tambahkan dulu lewat menu MATA KULIAH.");
+if(!nama||!matkul||!deadline)return info("Isi nama tugas, pilih mata kuliah, dan tentukan deadline.");
+if(!mataKuliahTugas.includes(matkul)&&!(editTugas!==null&&tugas[editTugas]?.matkul===matkul))return info("Pilih mata kuliah dari daftar yang tersedia.");
 try{
 let d={name:nama,course_name:matkul,deadline};
 editTugas===null?await q(sb.from("tasks").insert({...d,user_id:user.id,completed:false})):await q(sb.from("tasks").update(d).eq("id",tugas[editTugas].id));
