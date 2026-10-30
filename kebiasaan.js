@@ -19,13 +19,13 @@ async function loadData(){
  habits=result[0];logs=result[1];render();
 }
 function render(){
- const active=habits.filter(h=>h.active),now=today(),todayHabits=active.filter(h=>scheduled(h,new Date(now+"T00:00:00"))),doneToday=todayHabits.filter(h=>logFor(h.id,now));
+ const active=habits.filter(h=>h.active),prepared=habits.filter(h=>!h.active&&h.category==="Fitness"),now=today(),todayHabits=active.filter(h=>scheduled(h,new Date(now+"T00:00:00"))),doneToday=todayHabits.filter(h=>logFor(h.id,now));
  $("active-count").textContent=active.length;
  const weekStart=keyFromDate(mondayOf(new Date()));
  $("week-count").textContent=logs.filter(l=>l.completed_on>=weekStart).length;
  $("today-progress").textContent=doneToday.length+" / "+todayHabits.length;
  $("today-caption").textContent=todayHabits.length?"Kamu sudah menyelesaikan "+doneToday.length+" dari "+todayHabits.length+" kebiasaan hari ini.":"Belum ada kebiasaan yang dijadwalkan hari ini.";
- $("habit-list").innerHTML=active.length?active.map(h=>{
+ $("habit-list").innerHTML=(active.length?active.map(h=>{
   const done=logFor(h.id,now),days=(h.days_of_week||[]).map(n=>dayNames()[n-1]).join(", ");
   const schedule=h.frequency==="daily"?"SETIAP HARI":days.toUpperCase();
   return '<article class="habit-item '+(done?"done":"")+'"><div><div class="habit-title">'+escapeHtml(h.name)+'</div>'+
@@ -34,7 +34,7 @@ function render(){
    '<div class="habit-actions"><button class="check-button" type="button" onclick="toggleToday(\''+h.id+'\')" aria-label="'+(done?"Batalkan":"Tandai")+' selesai">'+(done?"✓":"○")+'</button>'+
    '<button class="icon-button" type="button" onclick="editHabit(\''+h.id+'\')">EDIT</button>'+
    '<button class="icon-button" type="button" onclick="archiveHabit(\''+h.id+'\')">ARSIP</button></div></article>';
- }).join(""):'<div class="empty">Belum ada kebiasaan. Tekan + TAMBAH untuk membuat rutinitas pertamamu.</div>';
+ }).join(""):'<div class="empty">Belum ada kebiasaan. Tekan + TAMBAH untuk membuat rutinitas pertamamu.</div>')+(prepared.length?'<div class="prepared-heading">DISIAPKAN · BELUM AKTIF</div>'+prepared.map(h=>'<article class="prepared-habit"><strong>'+escapeHtml(h.name)+'</strong><span>'+escapeHtml(h.description||"Belum diaktifkan")+'</span><small>Menunggu jadwal dan aktivasi</small></article>').join(""):"");
  renderWeek();
 }
 function renderWeek(){
