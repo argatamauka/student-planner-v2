@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#fde047"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="task-center.css"><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet"><title>Tugas & Kalender — Student Planner</title></head>
+<html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#fde047"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="task-center.css">
+<link rel="stylesheet" href="brand.css"><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet"><title>Tugas & Kalender — Student Planner</title></head>
 <body><main class="app">
 <header class="top"><a href="index.html" class="back">←</a><div><small>STUDENT PLANNER</small><h1>TUGAS & KALENDER</h1></div><button id="add-open" class="primary">+ TUGAS</button></header>
 <section class="layout">
@@ -11,4 +12,10 @@
 </main>
 <div id="task-modal" class="modal hidden"><form id="task-form" class="modal-card"><div class="panel-head"><div><small>DETAIL KEGIATAN</small><h2 id="form-title">Tambah Tugas</h2></div><button type="button" id="close-modal" class="close">×</button></div><label for="task-name">NAMA TUGAS</label><input id="task-name" required maxlength="120" placeholder="Contoh: Latihan Python list"><label for="task-desc">KETERANGAN</label><textarea id="task-desc" rows="2" maxlength="240" placeholder="Catatan (opsional)"></textarea><div class="form-grid"><div><label for="task-category">DAFTAR</label><select id="task-category"><option>Programming</option><option>English</option><option>Akademik</option><option>Fitness</option><option>Spiritual</option><option>Personal</option></select></div><div><label for="task-priority">PRIORITAS</label><select id="task-priority"><option value="high">Tinggi</option><option value="medium" selected>Sedang</option><option value="low">Rendah</option></select></div></div><label for="task-date">TANGGAL</label><input id="task-date" type="date" required><label for="task-course">MATA KULIAH (KHUSUS AKADEMIK)</label><input id="task-course" maxlength="100" placeholder="Nama mata kuliah (opsional)"><div class="form-actions"><button type="button" id="cancel-form" class="soft">BATAL</button><button type="submit" class="primary">SIMPAN TUGAS</button></div></form></div>
 <div id="toast" class="toast hidden"></div>
+<footer class="asthorizon-signature" aria-label="Brand identity">
+  <img src="asthorizon-mark.svg" alt="">
+  <span>A PROJECT BY</span>
+  <strong>ASThorizon</strong>
+  <span class="asthorizon-tagline">BEYOND THE KNOWN.</span>
+</footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="supabase-config.js"></script><script src="task-center.js"></script></body></html>
