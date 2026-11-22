@@ -1,6 +1,10 @@
-STUDENT PLANNER + SUPABASE
+ASTVIBE STUDENT PLANNER V2 + SUPABASE
 
-Backend Supabase sudah dibuat:
+Nama produk: ASTvibe Student Planner V2
+Brand: ASTvibe
+Tagline: CREATE YOUR OWN VIBE.
+
+Backend Supabase:
 - Project: student-planner
 - Region: ap-southeast-1
 - RLS aktif
@@ -24,13 +28,13 @@ CARA PASANG
 6. Jika Supabase meminta verifikasi email, buka email dan konfirmasi.
 7. Login dengan akun yang sama di HP dan laptop.
 
-CATATAN
+CATATAN KEAMANAN
 - Publishable key pada supabase-config.js memang aman berada di frontend karena database dilindungi RLS.
 - Jangan pernah memasukkan service_role key ke frontend.
 - Data localStorage lama akan dicoba dimigrasikan otomatis ke Supabase saat akun cloud masih kosong.
 
 IDENTITAS BRAND
-- Student Planner tetap menjadi nama produk.
-- Produk ini merupakan bagian dari ASThorizon.
-- ASThorizon: identitas personal untuk teknologi, kreativitas, dan eksplorasi.
-- Tagline: BEYOND THE KNOWN.
+- Nama produk harus diawali ASTvibe: ASTvibe Student Planner V2.
+- ASTvibe adalah identitas personal untuk teknologi, kreativitas, inovasi, dan eksplorasi.
+- Gunakan tagline CREATE YOUR OWN VIBE.
+- Identitas visual aplikasi tetap mempertahankan desain neobrutalism dan warna khas Student Planner.
