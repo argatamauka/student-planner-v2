@@ -28,3 +28,9 @@ CATATAN
 - Publishable key pada supabase-config.js memang aman berada di frontend karena database dilindungi RLS.
 - Jangan pernah memasukkan service_role key ke frontend.
 - Data localStorage lama akan dicoba dimigrasikan otomatis ke Supabase saat akun cloud masih kosong.
+
+IDENTITAS BRAND
+- Student Planner tetap menjadi nama produk.
+- Produk ini merupakan bagian dari ASThorizon.
+- ASThorizon: identitas personal untuk teknologi, kreativitas, dan eksplorasi.
+- Tagline: BEYOND THE KNOWN.
