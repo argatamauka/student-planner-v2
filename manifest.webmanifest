@@ -1,7 +1,7 @@
 {
   "name": "Student Planner v2",
   "short_name": "Planner",
-  "description": "Student planner untuk jadwal kuliah, tugas, kebiasaan, keuangan, tabungan, dan profil mahasiswa.",
+  "description": "Student planner untuk jadwal kuliah, tugas, kebiasaan, keuangan, tabungan, dan profil mahasiswa. A project by ASThorizon.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
