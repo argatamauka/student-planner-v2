@@ -1,0 +1,24 @@
+/* ASThorizon parent-brand signature. Product UI keeps its own design system. */
+.asthorizon-signature {
+  width: min(calc(100% - 24px), 760px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 22px auto 18px;
+  padding: 10px 8px calc(10px + env(safe-area-inset-bottom));
+  color: #626b78;
+  font: 700 9px/1.45 "Space Grotesk", sans-serif;
+  letter-spacing: .09em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.asthorizon-signature img { width: 24px; height: 24px; flex: 0 0 24px; }
+.asthorizon-signature strong {
+  color: #111827;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.asthorizon-signature .asthorizon-tagline { color: #8892a0; }
