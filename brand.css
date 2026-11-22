@@ -1,5 +1,5 @@
-/* ASThorizon parent-brand signature. Product UI keeps its own design system. */
-.asthorizon-signature {
+/* ASTvibe parent-brand signature. Product UI keeps its own design system. */
+.astvibe-signature {
   width: min(calc(100% - 24px), 760px);
   display: flex;
   flex-wrap: wrap;
@@ -14,11 +14,11 @@
   text-align: center;
   text-transform: uppercase;
 }
-.asthorizon-signature img { width: 24px; height: 24px; flex: 0 0 24px; }
-.asthorizon-signature strong {
+.astvibe-signature img { width: 24px; height: 24px; flex: 0 0 24px; }
+.astvibe-signature strong {
   color: #111827;
   font-size: 12px;
   letter-spacing: 0;
   text-transform: none;
 }
-.asthorizon-signature .asthorizon-tagline { color: #8892a0; }
+.astvibe-signature .astvibe-tagline { color: #8892a0; }
