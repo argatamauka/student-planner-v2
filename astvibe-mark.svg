@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">ASTvibe monogram</title>
+  <circle cx="32" cy="32" r="29" fill="#FFDE59" stroke="#111827" stroke-width="3"/>
+  <path d="M14 43 24 20h5l10 23h-6l-2-5H21l-2 5h-5Zm9-10h6l-3-7-3 7Z" fill="#111827"/>
+  <path d="M39 23c2-2 5-3 8-3 5 0 8 2 8 6 0 3-2 5-6 6l-4 1c-2 0-3 1-3 2 0 2 2 3 5 3 3 0 5-1 7-3l-1 6c-2 1-4 2-7 2-6 0-10-3-10-8 0-4 2-6 7-7l4-1c2 0 3-1 3-2 0-1-1-2-4-2-2 0-4 1-6 2Z" fill="#111827"/>
+</svg>
